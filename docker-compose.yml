@@ -1,0 +1,42 @@
+# docker-compose.yml
+# Polymarket Arbitrage Bot — single service deployment (D-07)
+#
+# VPS deployment sequence:
+#   1. cp secrets.env.example secrets.env
+#   2. nano secrets.env  (fill in all real values)
+#   3. chmod 600 secrets.env
+#   4. docker compose up -d
+#   5. docker compose ps  (verify bot is healthy)
+#   6. docker compose logs -f  (monitor startup)
+
+services:
+  bot:
+    build: .
+    container_name: arbbot
+
+    # Auto-restart: recovers from crashes and VPS reboots (D-09)
+    # "unless-stopped" respects manual "docker compose stop" without restarting
+    restart: unless-stopped
+
+    # Runtime secrets injection (D-03)
+    # secrets.env must exist on VPS — it is NEVER committed to git
+    # If secrets.env is missing, docker compose up fails immediately
+    env_file:
+      - secrets.env
+
+    # Named volume for SQLite data persistence across container rebuilds (D-08)
+    # /app/data is where SQLite database files are stored
+    volumes:
+      - bot_data:/app/data
+
+    # Logging: keep last 50MB of logs across 5 rotated files
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+# Named volume for SQLite persistence (D-08)
+# "bot_data" volume persists independently of container lifecycle
+volumes:
+  bot_data:
