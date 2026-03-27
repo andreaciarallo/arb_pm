@@ -1,0 +1,7 @@
+py-clob-client==0.34.6
+httpx[http2]==0.28.1
+websockets==16.0
+loguru==0.7.3
+python-dotenv==1.2.2
+pytest==9.0.2
+pytest-asyncio==0.25.0
