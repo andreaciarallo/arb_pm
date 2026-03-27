@@ -26,7 +26,13 @@
   2. Bot connects via dedicated RPC endpoint (not public) with latency benchmarks logged
   3. API keys are injected at runtime (not stored in .env) with trade-only permissions verified
   4. Non-custodial wallet is configured and can sign messages for Polymarket CLOB
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Project skeleton, fail-fast config, EOA wallet client (INFRA-04, INFRA-05)
+- [ ] 01-02-PLAN.md — Health check, latency benchmark, connectivity smoke tests (INFRA-01, INFRA-02)
+- [ ] 01-03-PLAN.md — Dockerfile and docker-compose.yml containerization (INFRA-03)
+- [ ] 01-04-PLAN.md — Human verification: VPS deploy, Docker health, latency benchmark gate (INFRA-01, INFRA-02, INFRA-03)
 
 ### Phase 2: Market Data & Detection
 **Goal**: Bot can detect arbitrage opportunities in real-time without executing trades
@@ -73,7 +79,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure Foundation | 0/5 | Not started | - |
+| 1. Infrastructure Foundation | 0/4 | Planned | - |
 | 2. Market Data & Detection | 0/6 | Not started | - |
 | 3. Execution & Risk Controls | 0/8 | Not started | - |
 | 4. Observability & Monitoring | 0/4 | Not started | - |
