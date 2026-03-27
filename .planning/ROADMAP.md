@@ -30,7 +30,7 @@
 
 Plans:
 - [x] 01-01-PLAN.md — Project skeleton, fail-fast config, EOA wallet client (INFRA-04, INFRA-05)
-- [ ] 01-02-PLAN.md — Health check, latency benchmark, connectivity smoke tests (INFRA-01, INFRA-02)
+- [x] 01-02-PLAN.md — Health check, latency benchmark, connectivity smoke tests (INFRA-01, INFRA-02)
 - [x] 01-03-PLAN.md — Dockerfile and docker-compose.yml containerization (INFRA-03)
 - [ ] 01-04-PLAN.md — Human verification: VPS deploy, Docker health, latency benchmark gate (INFRA-01, INFRA-02, INFRA-03)
 
@@ -79,7 +79,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure Foundation | 2/4 | In Progress|  |
+| 1. Infrastructure Foundation | 3/4 | In Progress|  |
 | 2. Market Data & Detection | 0/6 | Not started | - |
 | 3. Execution & Risk Controls | 0/8 | Not started | - |
 | 4. Observability & Monitoring | 0/4 | Not started | - |

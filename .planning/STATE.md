@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-03-27T19:32:13.095Z"
+last_updated: "2026-03-27T19:37:03.961Z"
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -40,7 +40,7 @@ Plan: 1 of 4
 
 **Progress:**
 
-[█████░░░░░] 50%
+[████████░░] 75%
 [          ] 0%
 
 ```
@@ -61,6 +61,7 @@ Plan: 1 of 4
 ---
 | Phase 01-infrastructure-foundation P01 | 3 | 2 tasks | 10 files |
 | Phase 01-infrastructure-foundation P03 | 5 | 2 tasks | 4 files |
+| Phase 01 P02 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Plan: 1 of 4
 - [Phase 01-infrastructure-foundation]: python:3.12-slim used for Docker base image — Alpine musl libc breaks eth-account/cryptography manylinux wheels
 - [Phase 01-infrastructure-foundation]: restart: unless-stopped (not always) — allows docker compose stop on VPS for maintenance without restart loop
 - [Phase 01-infrastructure-foundation]: Named volume bot_data at /app/data — SQLite persists across container rebuilds, never log raw RPC URLs (Alchemy key in path)
+- [Phase 01-infrastructure-foundation]: health.py pre-committed in Plan 03 parallel execution — verified correct, not recreated in Plan 02
+- [Phase 01-infrastructure-foundation]: Smoke tests use real_config fixture from Plan 01 conftest.py — auto-skip when POLY_API_KEY not set
+- [Phase 01-infrastructure-foundation]: test_alchemy_ws_rpc is async def — asyncio_mode=auto from pytest.ini handles it automatically
 
 ### Open Questions
 
@@ -105,7 +109,7 @@ Plan: 1 of 4
 
 ## Session Continuity
 
-**Last Session:** 2026-03-27T19:32:13.092Z
+**Last Session:** 2026-03-27T19:37:03.959Z
 **Next Session:** Plan Phase 1 via `/gsd:plan-phase 1`
 
 ---
