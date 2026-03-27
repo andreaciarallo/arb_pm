@@ -78,8 +78,8 @@
 | INFRA-01 | Phase 1 | Pending |
 | INFRA-02 | Phase 1 | Pending |
 | INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Pending |
 | DATA-02 | Phase 2 | Pending |
 | DATA-03 | Phase 2 | Pending |
