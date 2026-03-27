@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-03-27T19:22:11.973Z"
+last_updated: "2026-03-27T19:32:13.095Z"
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -40,7 +40,7 @@ Plan: 1 of 4
 
 **Progress:**
 
-[███░░░░░░░] 25%
+[█████░░░░░] 50%
 [          ] 0%
 
 ```
@@ -60,6 +60,7 @@ Plan: 1 of 4
 
 ---
 | Phase 01-infrastructure-foundation P01 | 3 | 2 tasks | 10 files |
+| Phase 01-infrastructure-foundation P03 | 5 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Plan: 1 of 4
 - [Phase 01-infrastructure-foundation]: Use signature_type=0 (EOA) for ClobClient — not type 1 (Magic/email wallet only)
 - [Phase 01-infrastructure-foundation]: Three-part CLOB API auth: POLY_API_KEY + POLY_API_SECRET + POLY_API_PASSPHRASE enforced via REQUIRED_SECRETS
 - [Phase 01-infrastructure-foundation]: eth-account excluded from requirements.txt — transitive dep of py-clob-client
+- [Phase 01-infrastructure-foundation]: python:3.12-slim used for Docker base image — Alpine musl libc breaks eth-account/cryptography manylinux wheels
+- [Phase 01-infrastructure-foundation]: restart: unless-stopped (not always) — allows docker compose stop on VPS for maintenance without restart loop
+- [Phase 01-infrastructure-foundation]: Named volume bot_data at /app/data — SQLite persists across container rebuilds, never log raw RPC URLs (Alchemy key in path)
 
 ### Open Questions
 
@@ -101,7 +105,7 @@ Plan: 1 of 4
 
 ## Session Continuity
 
-**Last Session:** 2026-03-27T19:22:11.970Z
+**Last Session:** 2026-03-27T19:32:13.092Z
 **Next Session:** Plan Phase 1 via `/gsd:plan-phase 1`
 
 ---
