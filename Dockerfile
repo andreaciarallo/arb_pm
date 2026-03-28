@@ -4,6 +4,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# src/ layout — bot package lives at /app/src/bot/
+ENV PYTHONPATH=/app/src
+
 # Install dependencies BEFORE copying application code.
 # This layer is cached and only rebuilds when requirements.txt changes.
 COPY requirements.txt .
