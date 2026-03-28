@@ -27,7 +27,7 @@ No trade execution, no position management, no Bregman optimization. Detection a
 - **D-05:** Always use **CLOB ask prices** for opportunity detection and paper P&L calculation — never Gamma API bid prices. Using bid prices in paper trading shows phantom profits that disappear in live execution.
 
 ### Market Scanning
-- **D-06:** Fetch market list via HTTP, filter to liquid markets by volume (threshold at Claude's discretion — flagged for user confirmation before planning locks it in).
+- **D-06:** Fetch market list via HTTP, filter to liquid markets by volume. Threshold: **$1,000 USD 24h volume** (user-confirmed). Stored as `min_market_volume` config field. Yields ~500 liquid markets — matches LayerX production scale (D-19).
 - **D-07:** Filter parameters are config values, not hardcoded — adjustable later via admin panel (Phase 4).
 - **D-08:** Scan cycle: **every 30 seconds**, ~500 markets per cycle (aligned with layerx production config).
 - **D-09:** WebSocket subscription is primary data source (DATA-01). HTTP polling fallback when WebSocket data is >5s stale (DATA-02).
@@ -35,8 +35,16 @@ No trade execution, no position management, no Bregman optimization. Detection a
 ### Opportunity Scoring
 - **D-10:** Use **VWAP-weighted pricing** against order book depth — not just best bid/ask. Realistic execution price matters even in dry-run.
 - **D-11:** Minimum order book depth: **$50** — opportunities with less depth are not worth logging (profit too small to cover execution risk).
-- **D-12:** **Min net profit threshold: 1% (configurable).** Stored as `MIN_NET_PROFIT_PCT` config parameter. Default 1% is temporary — research needed on new computer to find optimal value before Phase 3 execution. This is an open topic.
-- **D-13:** Fee assumption: 2% per side = 4% round-trip taker fee. Slippage estimated from VWAP deviation.
+- **D-12:** **Min net profit threshold: 1.5% base (configurable, tiered by category).** Small capital bots (<$1k) cannot compete at 0.5–1% spreads — institutional bots with co-located servers capture those first. 1.5% requires ~3–3.5% gross spread, achievable during volatile moments. Stored as `min_net_profit_pct` config field. Tier overrides: crypto = 2.0% (`min_net_profit_pct_crypto`), geopolitics = 0.75% (`min_net_profit_pct_geopolitics`).
+- **D-13:** Fee model is **category-aware** (D-18). Slippage estimated from VWAP deviation from best ask.
+- **D-18:** **Category-aware fee rates (researched, 2026 Polymarket structure):**
+  - Crypto: 1.8% taker per side (highest) — requires 2.0% min net profit
+  - Politics/Finance/Tech: 1.0% taker per side
+  - Sports: 0.75% taker per side
+  - Geopolitics: 0% fee-free — requires only 0.75% min net profit (highest value targets)
+  - Default/unknown: 1.0% taker per side (conservative)
+  - Strategic priority: target geopolitics (fee-free) and focus on endgame arb (93%+ probability, <48hr resolution)
+- **D-19:** **Market volume filter: $1,000 USD 24h volume** (user-confirmed, 2026-03-28). Stored as `min_market_volume` config field. Yields ~500 liquid markets at Polymarket's current scale.
 
 ### Dry-Run Output (DATA-06)
 - **D-14:** Log all detected opportunities to **both loguru (terminal) and SQLite**.
@@ -45,7 +53,6 @@ No trade execution, no position management, no Bregman optimization. Detection a
 - **D-17:** Opportunity log must be easy to query after the run — meaningful column names, indexed by detected_at.
 
 ### Claude's Discretion
-- Minimum volume/liquidity threshold for market filtering (confirm with user before locking)
 - SQLite table schema specifics beyond required columns above
 - WebSocket reconnection and backoff logic
 - HTTP polling interval when WebSocket is degraded
@@ -55,10 +62,9 @@ No trade execution, no position management, no Bregman optimization. Detection a
 </decisions>
 
 <open_topics>
-## Open Topics (research needed on new computer)
+## Open Topics
 
-- **MIN_NET_PROFIT_PCT optimal value:** Currently 1% default. Research Polymarket fee structure, typical spread widths, and slippage to find the right threshold before Phase 3 execution. Do not hardcode — keep as config parameter.
-- **Market volume filter threshold:** Claude proposes a value; user confirms before planning finalizes.
+All topics resolved as of 2026-03-28. See D-12, D-18, D-19.
 
 </open_topics>
 
