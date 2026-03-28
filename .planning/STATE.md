@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-03-28T13:51:14.103Z"
+last_updated: "2026-03-28T14:04:01Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -40,7 +40,7 @@ Plan: 1 of 4
 
 **Progress:**
 
-[████████░░] 80%
+[█████████░] 90%
 
 ```
 
@@ -63,6 +63,7 @@ Plan: 1 of 4
 | Phase 01 P02 | 2 | 2 tasks | 3 files |
 | Phase 02 P02 | 15 | 2 tasks | 4 files |
 | Phase 02 P03 | 8 | 2 tasks | 4 files |
+| Phase 02 P05 | 2 | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,10 @@ Plan: 1 of 4
 - [Phase 02-04]: estimated_fees = (yes_ask + no_ask) * taker_fee — fees on notional, not unit position
 - [Phase 02-04]: Sports and politics use base min_net_profit_pct (1.5%) — no tier override needed
 - [Phase 02-04]: confidence_score = net_spread / (net_spread + 0.01) — simple Phase 2 proxy, refined in Phase 3
+- [Phase 02-05]: Keyword extraction uses len>=4, alpha-only, strip punctuation — eliminates stopwords without a stopword list
+- [Phase 02-05]: BFS connected-components grouping allows transitive chains (A~B~C all in one group even if A,C don't share words)
+- [Phase 02-05]: fees = total_yes_asks * taker_fee (single-sided — buying YES only, not YES+NO pairs)
+- [Phase 02-05]: LLM-based dependency detection deferred to Phase 3 per D-03; keyword heuristic used in Phase 2
 
 ### Open Questions
 
@@ -124,9 +129,9 @@ Plan: 1 of 4
 
 ## Session Continuity
 
-**Last Session:** 2026-03-28T14:01:27Z
-**Stopped At:** Completed 02-04-PLAN.md (category-aware fee model + YES/NO detection engine)
-**Next Session:** Continue Phase 2 — execute 02-05-PLAN.md
+**Last Session:** 2026-03-28T14:04:01Z
+**Stopped At:** Completed 02-05-PLAN.md (cross-market arbitrage detection via keyword grouping)
+**Next Session:** Continue Phase 2 — next plan after 02-05
 
 ---
 
