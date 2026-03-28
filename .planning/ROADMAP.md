@@ -8,7 +8,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Infrastructure Foundation** — VPS deployment, RPC endpoints, Docker containerization, wallet integration
+- [x] **Phase 1: Infrastructure Foundation** — VPS deployment, RPC endpoints, Docker containerization, wallet integration (completed 2026-03-28)
 - [ ] **Phase 2: Market Data & Detection** — Real-time scanning, YES+NO arbitrage detection, dry-run mode
 - [ ] **Phase 3: Execution & Risk Controls** — Automated trade execution with circuit breakers and position limits
 - [ ] **Phase 4: Observability & Monitoring** — Trade logging, alerts, live dashboard
@@ -32,7 +32,7 @@ Plans:
 - [x] 01-01-PLAN.md — Project skeleton, fail-fast config, EOA wallet client (INFRA-04, INFRA-05)
 - [x] 01-02-PLAN.md — Health check, latency benchmark, connectivity smoke tests (INFRA-01, INFRA-02)
 - [x] 01-03-PLAN.md — Dockerfile and docker-compose.yml containerization (INFRA-03)
-- [ ] 01-04-PLAN.md — Human verification: VPS deploy, Docker health, latency benchmark gate (INFRA-01, INFRA-02, INFRA-03)
+- [x] 01-04-PLAN.md — Human verification: VPS deploy, Docker health, latency benchmark gate (INFRA-01, INFRA-02, INFRA-03)
 
 ### Phase 2: Market Data & Detection
 **Goal**: Bot can detect arbitrage opportunities in real-time without executing trades
@@ -79,7 +79,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure Foundation | 3/4 | In Progress|  |
+| 1. Infrastructure Foundation | 4/4 | Complete   | 2026-03-28 |
 | 2. Market Data & Detection | 0/6 | Not started | - |
 | 3. Execution & Risk Controls | 0/8 | Not started | - |
 | 4. Observability & Monitoring | 0/4 | Not started | - |

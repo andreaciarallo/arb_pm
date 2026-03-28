@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-03-27T19:37:03.961Z"
+last_updated: "2026-03-28T11:27:35.987Z"
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -40,7 +40,7 @@ Plan: 1 of 4
 
 **Progress:**
 
-[████████░░] 75%
+[██████████] 100%
 [          ] 0%
 
 ```
@@ -83,6 +83,9 @@ Plan: 1 of 4
 - [Phase 01-infrastructure-foundation]: health.py pre-committed in Plan 03 parallel execution — verified correct, not recreated in Plan 02
 - [Phase 01-infrastructure-foundation]: Smoke tests use real_config fixture from Plan 01 conftest.py — auto-skip when POLY_API_KEY not set
 - [Phase 01-infrastructure-foundation]: test_alchemy_ws_rpc is async def — asyncio_mode=auto from pytest.ini handles it automatically
+- [Phase 01-infrastructure-foundation]: VPS location Ashburn VA (us-east) instead of London (uk-lon1) — London unavailable in Hetzner account; Ashburn median 92.4ms meets sub-100ms gate
+- [Phase 01-infrastructure-foundation]: CPX31 used instead of CX32 — equivalent spec (4 vCPU, 8GB RAM), US region naming convention in Hetzner
+- [Phase 01-infrastructure-foundation]: pytest downgraded 9.0.2→8.3.4 to resolve version conflict in VPS Docker build
 
 ### Open Questions
 
@@ -109,7 +112,7 @@ Plan: 1 of 4
 
 ## Session Continuity
 
-**Last Session:** 2026-03-27T19:37:03.959Z
+**Last Session:** 2026-03-28T11:27:35.984Z
 **Next Session:** Plan Phase 1 via `/gsd:plan-phase 1`
 
 ---
