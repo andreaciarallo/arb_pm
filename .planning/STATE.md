@@ -8,8 +8,8 @@ progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -40,7 +40,7 @@ Plan: 1 of 4
 
 **Progress:**
 
-[███████░░░] 70%
+[████████░░] 80%
 
 ```
 
@@ -94,6 +94,10 @@ Plan: 1 of 4
 - [Phase 02-03]: normalize_order_book() returns valid MarketPrice for resolved markets (ask=1.0) — detection engine skips them separately, not the normalizer
 - [Phase 02-03]: yes_bid defaults to 0.0 on empty bids list — bid not critical for arb detection per D-05
 - [Phase 02-03]: poll_stale_markets() uses per-token exception isolation — one HTTP failure does not stop other polls
+- [Phase 02-04]: NO token ask price read from no_price.yes_ask — MarketPrice stores each token's ask in yes_ask regardless of token type
+- [Phase 02-04]: estimated_fees = (yes_ask + no_ask) * taker_fee — fees on notional, not unit position
+- [Phase 02-04]: Sports and politics use base min_net_profit_pct (1.5%) — no tier override needed
+- [Phase 02-04]: confidence_score = net_spread / (net_spread + 0.01) — simple Phase 2 proxy, refined in Phase 3
 
 ### Open Questions
 
@@ -120,9 +124,9 @@ Plan: 1 of 4
 
 ## Session Continuity
 
-**Last Session:** 2026-03-28T13:54:13Z
-**Stopped At:** Completed 02-03-PLAN.md (normalizer + HTTP poller)
-**Next Session:** Continue Phase 2 — execute 02-04-PLAN.md
+**Last Session:** 2026-03-28T14:01:27Z
+**Stopped At:** Completed 02-04-PLAN.md (category-aware fee model + YES/NO detection engine)
+**Next Session:** Continue Phase 2 — execute 02-05-PLAN.md
 
 ---
 
