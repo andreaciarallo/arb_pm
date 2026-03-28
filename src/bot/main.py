@@ -1,22 +1,23 @@
 """
 Polymarket Arbitrage Bot — entrypoint.
 
-Phase 1: Validates secrets and confirms connectivity. The main loop is a
-placeholder — subsequent phases (data scanning, execution) replace it.
+Loads configuration, validates CLOB connectivity, and starts the dry-run scanner.
+All trade execution is deferred to Phase 3 — Phase 2 detects and logs only.
 
 Run via Docker:
     docker compose up -d
 
 Run locally (development):
-    PYTHONPATH=. python -m bot.main
+    PYTHONPATH=src python -m bot.main
 """
+import asyncio
 import sys
-import time
 
 from loguru import logger
 
-from bot.config import load_config
+from bot import dry_run
 from bot.client import build_client
+from bot.config import load_config
 from bot.health import check_health
 
 
@@ -25,8 +26,8 @@ def main() -> None:
     Bot startup sequence:
     1. Load and validate all secrets (fail fast if any missing — D-06)
     2. Verify CLOB API connectivity
-    3. Confirm wallet address
-    4. Enter main loop (placeholder in Phase 1)
+    3. Build authenticated client and confirm wallet address
+    4. Start Phase 2 dry-run scanner (detection only, no trades)
     """
     logger.info("Polymarket Arbitrage Bot starting...")
 
@@ -54,11 +55,9 @@ def main() -> None:
     logger.info("Polygon RPC HTTP: configured")
     logger.info("Polygon RPC WS: configured")
 
-    # Step 4: Main loop placeholder (Phase 2 replaces this with market scanning)
-    logger.info("Bot ready. Entering idle loop (Phase 2 will replace with market scanning).")
-    while True:
-        time.sleep(60)
-        logger.debug("Bot idle — waiting for Phase 2 market scanning implementation")
+    # Step 4: Start Phase 2 dry-run scanner (detection only, no trades placed)
+    logger.info("Starting Phase 2 dry-run scanner (detection only, no trades)")
+    asyncio.run(dry_run.run(config, client))
 
 
 if __name__ == "__main__":
