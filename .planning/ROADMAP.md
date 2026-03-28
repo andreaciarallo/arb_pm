@@ -55,7 +55,7 @@ Plans:
   1. Bot executes arbitrage trades automatically when fee-adjusted spread exceeds threshold
   2. Every order is dual-verified via REST API after WebSocket fill confirmation
   3. Bot handles partial fills and mitigates one-leg execution risk (verified by simulated partial fill)
-  4. Position size per trade is capped at configured percentage of total capital (0.5-1.5%)
+  4. Position size per trade uses modified Kelly formula with 5% capital ceiling (D-01)
   5. Daily stop-loss pauses trading when loss limit reached (5-8% configured threshold)
   6. Circuit breaker pauses trading on high error rates (verified by simulated error injection)
   7. Emergency kill switch immediately closes positions when triggered

@@ -34,7 +34,7 @@
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | EXEC-01 | Execute arbitrage trades automatically via CLOB API when opportunities found | Must-have |
-| EXEC-02 | Use create_and_post_order() for dual-verified order placement | Must-have |
+| EXEC-02 | Use FAK orders via create_order() + post_order(OrderType.FAK); create_and_post_order() excluded (GTC-only) | Must-have |
 | EXEC-03 | Handle partial fills and one-leg execution risk mitigation | Must-have |
 | EXEC-04 | Verify every order via REST API after WebSocket fill confirmation | Must-have |
 
