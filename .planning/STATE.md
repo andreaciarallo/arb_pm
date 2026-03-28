@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-last_updated: "2026-03-28T13:45:41.295Z"
+last_updated: "2026-03-28T13:51:14.103Z"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
-  percent: 100
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -40,7 +40,7 @@ Plan: 1 of 4
 
 **Progress:**
 
-[██████████] 100%
+[██████░░░░] 60%
 [          ] 0%
 
 ```
@@ -62,6 +62,7 @@ Plan: 1 of 4
 | Phase 01-infrastructure-foundation P01 | 3 | 2 tasks | 10 files |
 | Phase 01-infrastructure-foundation P03 | 5 | 2 tasks | 4 files |
 | Phase 01 P02 | 2 | 2 tasks | 3 files |
+| Phase 02 P02 | 15 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Plan: 1 of 4
 - [Phase 01-infrastructure-foundation]: CPX31 used instead of CX32 — equivalent spec (4 vCPU, 8GB RAM), US region naming convention in Hetzner
 - [Phase 01-infrastructure-foundation]: pytest downgraded 9.0.2→8.3.4 to resolve version conflict in VPS Docker build
 - [Phase 02]: Phase 2 BotConfig fields use dataclass defaults only — no new env vars, REQUIRED_SECRETS stays at 6 items
+- [Phase 02]: Prices parsed from sells array (ask side) only — never buys (D-05)
+- [Phase 02]: is_stale() returns True for unknown tokens — treat missing as stale (D-09)
+- [Phase 02]: Each token stored independently in cache; detection engine pairs YES+NO by condition_id
 
 ### Open Questions
 
@@ -113,7 +117,7 @@ Plan: 1 of 4
 
 ## Session Continuity
 
-**Last Session:** 2026-03-28T13:45:34.415Z
+**Last Session:** 2026-03-28T13:51:07.149Z
 **Next Session:** Plan Phase 1 via `/gsd:plan-phase 1`
 
 ---
