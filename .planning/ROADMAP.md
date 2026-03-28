@@ -9,7 +9,7 @@
 ## Phases
 
 - [x] **Phase 1: Infrastructure Foundation** — VPS deployment, RPC endpoints, Docker containerization, wallet integration (completed 2026-03-28)
-- [ ] **Phase 2: Market Data & Detection** — Real-time scanning, YES+NO arbitrage detection, dry-run mode
+- [x] **Phase 2: Market Data & Detection** — Real-time scanning, YES+NO arbitrage detection, dry-run mode (completed 2026-03-28)
 - [ ] **Phase 3: Execution & Risk Controls** — Automated trade execution with circuit breakers and position limits
 - [ ] **Phase 4: Observability & Monitoring** — Trade logging, alerts, live dashboard
 
@@ -80,7 +80,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure Foundation | 4/4 | Complete   | 2026-03-28 |
-| 2. Market Data & Detection | 3/6 | In Progress|  |
+| 2. Market Data & Detection | 6/6 | Complete   | 2026-03-28 |
 | 3. Execution & Risk Controls | 0/8 | Not started | - |
 | 4. Observability & Monitoring | 0/4 | Not started | - |
 
