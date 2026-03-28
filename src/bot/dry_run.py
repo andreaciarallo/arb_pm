@@ -28,7 +28,7 @@ from bot.storage.writer import AsyncWriter
 
 _DEFAULT_DURATION_HOURS = 24
 _MARKET_REFRESH_CYCLES = 10  # re-fetch market list every 10 scan cycles
-_DATA_DIR = os.environ.get("DATA_DIR", "/data")
+_DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 _DB_PATH = os.path.join(_DATA_DIR, "bot.db")
 
 
