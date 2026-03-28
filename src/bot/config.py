@@ -23,14 +23,35 @@ REQUIRED_SECRETS = [
 
 @dataclass(frozen=True)
 class BotConfig:
+    # Phase 1: Required secrets
     poly_api_key: str
     poly_api_secret: str
     poly_api_passphrase: str
     wallet_private_key: str
     polygon_rpc_http: str    # Contains Alchemy API key — never log raw value
     polygon_rpc_ws: str      # Contains Alchemy API key — never log raw value
+
+    # Phase 1: Optional notification channels
     telegram_bot_token: str | None = None
     discord_webhook_url: str | None = None
+
+    # Phase 2: Market scanning parameters (D-08, D-09, D-11, D-19)
+    min_market_volume: float = 1000.0         # USD 24h volume filter (D-19)
+    scan_interval_seconds: int = 30            # Scan cycle frequency (D-08)
+    ws_stale_threshold_seconds: int = 5        # WebSocket staleness cutoff (D-09)
+    min_order_book_depth: float = 50.0         # USD minimum depth per opportunity (D-11)
+
+    # Phase 2: Profit thresholds by category (D-12)
+    min_net_profit_pct: float = 0.015          # 1.5% base
+    min_net_profit_pct_crypto: float = 0.020   # 2.0% (crypto fees peak at 1.8%)
+    min_net_profit_pct_geopolitics: float = 0.0075  # 0.75% (fee-free markets)
+
+    # Phase 2: Taker fee rates by category, per side (D-18)
+    fee_pct_crypto: float = 0.018              # 1.8% per side
+    fee_pct_politics: float = 0.010            # 1.0% per side (Politics/Finance/Tech)
+    fee_pct_sports: float = 0.0075             # 0.75% per side
+    fee_pct_geopolitics: float = 0.0           # 0% fee-free
+    fee_pct_default: float = 0.010             # 1.0% fallback for unknown categories
 
 
 def load_config() -> BotConfig:
