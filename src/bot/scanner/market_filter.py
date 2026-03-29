@@ -11,7 +11,7 @@ from py_clob_client.client import ClobClient
 
 from bot.config import BotConfig
 
-_PAGINATION_END = "end"
+_PAGINATION_END = "LTE="  # Polymarket CLOB API end-of-pagination cursor (base64 for "-1")
 
 
 async def fetch_liquid_markets(client: ClobClient, config: BotConfig) -> list[dict]:
@@ -38,7 +38,7 @@ async def fetch_liquid_markets(client: ClobClient, config: BotConfig) -> list[di
         all_markets.extend(page_markets)
 
         next_cursor = response.get("next_cursor", _PAGINATION_END)
-        if next_cursor == _PAGINATION_END or not next_cursor:
+        if next_cursor in (_PAGINATION_END, "end") or not next_cursor:
             break
         cursor = next_cursor
 
