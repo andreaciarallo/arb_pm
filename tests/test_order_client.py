@@ -55,7 +55,8 @@ async def test_place_fak_order_uses_fak_not_gtc():
 
 async def test_place_fak_order_poly_exception_returns_none():
     """PolyApiException during create_order must return None (never raise)."""
-    client = _make_client(create_order_raises=PolyApiException(status_code=400, error_msg="rejected"))
+    # PolyApiException(error_msg=...) — status_code kwarg not supported by actual SDK (0.34.6)
+    client = _make_client(create_order_raises=PolyApiException(error_msg="rejected"))
     result = await place_fak_order(client, "token_yes", 0.41, 10.0, "BUY")
     assert result is None
 
