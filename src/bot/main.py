@@ -1,14 +1,15 @@
 """
 Polymarket Arbitrage Bot — entrypoint.
 
-Loads configuration, validates CLOB connectivity, and starts the dry-run scanner.
-All trade execution is deferred to Phase 3 — Phase 2 detects and logs only.
+Loads configuration, validates CLOB connectivity, and starts the scanner.
+Pass --live flag to enable Phase 3 live execution (default: dry-run, no trades).
 
 Run via Docker:
     docker compose up -d
 
 Run locally (development):
-    PYTHONPATH=src python -m bot.main
+    PYTHONPATH=src python -m bot.main          # dry-run (default)
+    PYTHONPATH=src python -m bot.main --live   # live execution
 """
 import asyncio
 import sys
@@ -16,6 +17,7 @@ import sys
 from loguru import logger
 
 from bot import dry_run
+from bot import live_run
 from bot.client import build_client
 from bot.config import load_config
 from bot.health import check_health
@@ -27,7 +29,7 @@ def main() -> None:
     1. Load and validate all secrets (fail fast if any missing — D-06)
     2. Verify CLOB API connectivity
     3. Build authenticated client and confirm wallet address
-    4. Start Phase 2 dry-run scanner (detection only, no trades)
+    4. Choose mode based on --live flag (default: dry-run, no trades)
     """
     logger.info("Polymarket Arbitrage Bot starting...")
 
@@ -55,9 +57,13 @@ def main() -> None:
     logger.info("Polygon RPC HTTP: configured")
     logger.info("Polygon RPC WS: configured")
 
-    # Step 4: Start Phase 2 dry-run scanner (detection only, no trades placed)
-    logger.info("Starting Phase 2 dry-run scanner (detection only, no trades)")
-    asyncio.run(dry_run.run(config, client))
+    # Step 4: Choose mode based on --live flag
+    if "--live" in sys.argv:
+        logger.info("Starting Phase 3 live execution scanner (--live flag)")
+        asyncio.run(live_run.run(config, client))
+    else:
+        logger.info("Starting Phase 2 dry-run scanner (detection only, no trades)")
+        asyncio.run(dry_run.run(config, client))
 
 
 if __name__ == "__main__":
