@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 pytestmark = pytest.mark.unit
 
 
-def _make_market(volume: float, closed: bool = False) -> dict:
+def _make_market(volume: float, closed: bool = False, enable_order_book: bool = True, accepting_orders: bool = True) -> dict:
     return {
         "condition_id": f"0x{volume:.0f}",
         "question": f"Test market volume={volume}",
@@ -16,6 +16,8 @@ def _make_market(volume: float, closed: bool = False) -> dict:
         "liquidity": volume * 0.5,
         "active": not closed,
         "closed": closed,
+        "enable_order_book": enable_order_book,
+        "accepting_orders": accepting_orders,
         "tags": [],
         "end_date_iso": "2027-01-01T00:00:00Z",
     }
@@ -33,29 +35,31 @@ def _make_config(min_volume: float = 1000.0):
 
 
 @pytest.mark.asyncio
-async def test_fetch_liquid_markets_filters_by_volume():
-    """Markets with volume >= threshold are returned; below threshold are excluded."""
+async def test_fetch_liquid_markets_filters_by_order_book_flags():
+    """Only markets with enable_order_book=True and accepting_orders=True are returned.
+
+    Note: The CLOB API does not return volume data, so filtering is done via
+    active/enable_order_book/accepting_orders flags (see market_filter.py docstring).
+    """
     from bot.scanner.market_filter import fetch_liquid_markets
 
     mock_client = MagicMock()
     mock_client.get_markets.return_value = {
         "data": [
-            _make_market(5000.0),   # above threshold — include
-            _make_market(999.0),    # below threshold — exclude
-            _make_market(1000.0),   # exactly at threshold — include
+            _make_market(5000.0),                                          # all flags OK — include
+            _make_market(5000.0, enable_order_book=False),                 # no order book — exclude
+            _make_market(5000.0, accepting_orders=False),                  # not accepting — exclude
         ],
         "next_cursor": "end",
         "count": 3,
     }
 
-    config = _make_config(min_volume=1000.0)
+    config = _make_config()
     result = await fetch_liquid_markets(mock_client, config)
 
-    assert len(result) == 2
-    volumes = {m["volume"] for m in result}
-    assert 5000.0 in volumes
-    assert 1000.0 in volumes
-    assert 999.0 not in volumes
+    assert len(result) == 1
+    assert result[0]["enable_order_book"] is True
+    assert result[0]["accepting_orders"] is True
 
 
 @pytest.mark.asyncio
