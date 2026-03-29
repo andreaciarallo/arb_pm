@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md (Modified Kelly position sizing)
-last_updated: "2026-03-29T16:49:59.493Z"
+stopped_at: Completed 03-02-PLAN.md (FAK order client and REST fill verification)
+last_updated: "2026-03-29T16:54:59.386Z"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -41,7 +41,7 @@ Plan: 1 of 5
 
 **Progress:**
 
-[███████░░░] 73%
+[████████░░] 80%
 
 **Active Branch:** None
 
@@ -65,6 +65,7 @@ Plan: 1 of 5
 | Phase 02 P05 | 2 | 1 task | 2 files |
 | Phase 02 P06 | 15 | 2 tasks | 7 files |
 | Phase 03 P01 | 7 | 2 tasks | 4 files |
+| Phase 03 P02 | 169 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Plan: 1 of 5
 - [Phase 02-06]: Idle while-loop replaced with asyncio.run(dry_run.run(config, client)) in main.py
 - [Phase 03]: kelly_size() returns 0.0 (not min floor) when Kelly formula yields below-minimum — caller decides to skip, never auto-promote (D-01)
 - [Phase 03]: Modified Kelly uses sqrt(p) in denominator (arxiv 2508.03474): f = (b*p - q) / (b*sqrt(p)) — execution probability p = min(1.0, depth/target_size)
+- [Phase 03]: PolyApiException(error_msg=...) — status_code kwarg not in SDK 0.34.6; plan documented wrong constructor
+- [Phase 03]: FAK order client: create_order+post_order(FAK) two-step pattern; all REST calls in run_in_executor
 
 ### Open Questions
 
@@ -136,8 +139,8 @@ Plan: 1 of 5
 
 ## Session Continuity
 
-**Last Session:** 2026-03-29T16:49:59.490Z
-**Stopped At:** Completed 03-01-PLAN.md (Modified Kelly position sizing)
+**Last Session:** 2026-03-29T16:54:59.382Z
+**Stopped At:** Completed 03-02-PLAN.md (FAK order client and REST fill verification)
 **Next Session:** Phase 2 complete — proceed to Phase 3 (live execution)
 
 ---

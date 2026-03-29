@@ -86,10 +86,10 @@
 | DATA-04 | Phase 2 | Pending |
 | DATA-05 | Phase 2 | Complete |
 | DATA-06 | Phase 2 | Complete |
-| EXEC-01 | Phase 3 | Pending |
-| EXEC-02 | Phase 3 | Pending |
+| EXEC-01 | Phase 3 | Complete |
+| EXEC-02 | Phase 3 | Complete |
 | EXEC-03 | Phase 3 | Pending |
-| EXEC-04 | Phase 3 | Pending |
+| EXEC-04 | Phase 3 | Complete |
 | RISK-01 | Phase 3 | Complete |
 | RISK-02 | Phase 3 | Pending |
 | RISK-03 | Phase 3 | Pending |
