@@ -13,11 +13,28 @@ from loguru import logger
 from bot.scanner.price_cache import MarketPrice
 
 
-def normalize_order_book(book: dict) -> MarketPrice | None:
-    """
-    Convert a CLOB HTTP order book response to a MarketPrice.
+def _get(obj, key, default=None):
+    """Get a field from either a dict or a dataclass/object by attribute."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
-    Returns None (with warning log) for any error condition:
+
+def _price_size(entry) -> tuple[float, float]:
+    """Extract (price, size) from an order entry (dict or OrderSummary object)."""
+    if isinstance(entry, dict):
+        return float(entry["price"]), float(entry.get("size", 0.0))
+    return float(entry.price), float(getattr(entry, "size", 0.0))
+
+
+def normalize_order_book(book) -> MarketPrice | None:
+    """
+    Convert a CLOB order book response to a MarketPrice.
+
+    Accepts both raw dicts (WebSocket) and OrderBookSummary objects
+    (py-clob-client HTTP response).
+
+    Returns None for any error condition:
     - Missing asset_id
     - Empty asks list (no ask price available)
     - Non-numeric price strings
@@ -26,27 +43,26 @@ def normalize_order_book(book: dict) -> MarketPrice | None:
     MarketPrice with yes_ask=1.0. The detection engine skips markets
     where yes_ask == 1.0 as a separate step.
     """
-    token_id = book.get("asset_id")
+    token_id = _get(book, "asset_id")
     if not token_id:
         logger.warning("normalize_order_book: missing asset_id in response")
         return None
 
-    asks = book.get("asks", [])
+    asks = _get(book, "asks", [])
     if not asks:
         logger.debug(f"normalize_order_book: empty asks for {token_id}")
         return None
 
-    bids = book.get("bids", [])
+    bids = _get(book, "bids", [])
 
     try:
-        yes_ask = float(asks[0]["price"])
-        yes_depth = float(asks[0].get("size", 0.0))
-    except (KeyError, ValueError, TypeError) as e:
+        yes_ask, yes_depth = _price_size(asks[0])
+    except (KeyError, ValueError, TypeError, IndexError) as e:
         logger.warning(f"normalize_order_book: malformed ask for {token_id}: {e}")
         return None
 
     try:
-        yes_bid = float(bids[0]["price"]) if bids else 0.0
+        yes_bid = _price_size(bids[0])[0] if bids else 0.0
     except (KeyError, ValueError, TypeError):
         yes_bid = 0.0
 
