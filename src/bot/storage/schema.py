@@ -82,3 +82,90 @@ def insert_opportunity(conn: sqlite3.Connection, opp) -> None:
         "websocket",
     ))
     conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Trades table — records every order attempt (success and failure)
+# ---------------------------------------------------------------------------
+
+_CREATE_TRADES_TABLE = """
+CREATE TABLE IF NOT EXISTS trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id TEXT UNIQUE NOT NULL,
+    market_id TEXT NOT NULL,
+    market_question TEXT NOT NULL,
+    leg TEXT NOT NULL,
+    side TEXT NOT NULL,
+    token_id TEXT NOT NULL,
+    price REAL NOT NULL,
+    size REAL NOT NULL,
+    size_filled REAL NOT NULL DEFAULT 0.0,
+    fees_usd REAL NOT NULL DEFAULT 0.0,
+    net_pnl REAL,
+    order_id TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    kelly_size REAL,
+    vwap_price REAL,
+    submitted_at TEXT NOT NULL,
+    filled_at TEXT,
+    error_msg TEXT
+)
+"""
+
+_CREATE_TRADES_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_trades_market_id ON trades(market_id)",
+    "CREATE INDEX IF NOT EXISTS idx_trades_submitted_at ON trades(submitted_at)",
+    "CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status)",
+]
+
+_INSERT_TRADE = """
+INSERT OR IGNORE INTO trades (
+    trade_id, market_id, market_question, leg, side, token_id,
+    price, size, size_filled, fees_usd, order_id, status,
+    kelly_size, vwap_price, submitted_at, error_msg
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+
+def init_trades_table(conn: sqlite3.Connection) -> None:
+    """
+    Create the trades table and indexes if they don't exist.
+    Called from live_run.py init — safe on existing database.
+    """
+    conn.execute(_CREATE_TRADES_TABLE)
+    for idx_sql in _CREATE_TRADES_INDEXES:
+        conn.execute(idx_sql)
+    conn.commit()
+
+
+def insert_trade(
+    conn: sqlite3.Connection,
+    result,
+    market_question: str,
+    trade_id: str,
+) -> None:
+    """
+    Insert one ExecutionResult into the trades table.
+    Uses INSERT OR IGNORE to prevent duplicate trade_id constraint errors.
+    Called for EVERY order attempt including failures (status='failed').
+    """
+    from datetime import datetime
+    conn.execute(_INSERT_TRADE, (
+        trade_id,
+        result.market_id,
+        market_question,
+        result.leg,
+        result.side,
+        result.token_id,
+        result.price,
+        result.size,
+        result.size_filled,
+        0.0,                    # fees_usd — Phase 4 will compute actual fees
+        result.order_id,
+        result.status,
+        result.kelly_size_usd,
+        result.vwap_price,
+        datetime.utcnow().isoformat(),
+        result.error_msg,
+    ))
+    conn.commit()
