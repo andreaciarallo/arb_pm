@@ -63,8 +63,11 @@ async def run(
     logger.info(f"Loaded {len(markets)} liquid markets")
 
     # Start WebSocket client as background task
+    # Cap at 2000 token IDs — large subscription messages are silently dropped
+    # by the Polymarket WebSocket server. HTTP polling covers the rest.
     all_token_ids = [tid for m in markets for tid in m.get("token_ids", [])]
-    ws_client = WebSocketClient(token_ids=all_token_ids, cache=cache, config=config)
+    ws_token_ids = all_token_ids[:2000]
+    ws_client = WebSocketClient(token_ids=ws_token_ids, cache=cache, config=config)
     ws_task = asyncio.create_task(ws_client.run())
 
     stop_at = datetime.utcnow() + timedelta(hours=duration_hours)

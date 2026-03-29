@@ -16,6 +16,7 @@ from bot.scanner.price_cache import PriceCache
 
 _MAX_POLLS_PER_CYCLE = 50  # cap to keep cycle duration bounded
 _dead_tokens: set[str] = set()  # tokens that returned 404 — never retry
+_poll_offset: int = 0  # rotating offset so we cycle through all markets over time
 
 
 async def poll_stale_markets(
@@ -37,10 +38,15 @@ async def poll_stale_markets(
     Returns:
         Count of markets successfully refreshed.
     """
+    global _poll_offset
     refreshed = 0
     polled = 0
 
-    for market in markets:
+    # Rotate through all markets across cycles so we don't always poll the same 50
+    rotated_markets = markets[_poll_offset:] + markets[:_poll_offset]
+    _poll_offset = (_poll_offset + _MAX_POLLS_PER_CYCLE) % max(len(markets), 1)
+
+    for market in rotated_markets:
         if polled >= _MAX_POLLS_PER_CYCLE:
             break
 
