@@ -53,6 +53,15 @@ class BotConfig:
     fee_pct_geopolitics: float = 0.0           # 0% fee-free
     fee_pct_default: float = 0.010             # 1.0% fallback for unknown categories
 
+    # Phase 3: Execution risk parameters (D-01, D-06, D-07)
+    total_capital_usd: float = 1000.0              # Total capital at risk in USD
+    kelly_min_order_usd: float = 5.0               # Polymarket minimum order floor (D-01)
+    kelly_max_capital_pct: float = 0.05            # Safety ceiling: 5% per trade (D-01)
+    daily_stop_loss_pct: float = 0.05              # 5% daily loss limit (D-06)
+    circuit_breaker_error_count: int = 5           # Consecutive errors before trip (D-07)
+    circuit_breaker_window_seconds: int = 60       # Error counting window in seconds (D-07)
+    circuit_breaker_cooldown_seconds: int = 300    # Base cooldown: 5 minutes (D-07)
+
 
 def load_config() -> BotConfig:
     """
