@@ -49,17 +49,21 @@ async def fetch_liquid_markets(client: ClobClient, config: BotConfig) -> list[di
     for market in all_markets:
         if not market.get("active", False):
             continue
+        if not market.get("enable_order_book", False):
+            continue
         if not market.get("accepting_orders", False):
             continue
 
         # Extract token IDs for WebSocket subscription
         token_ids = [t["token_id"] for t in market.get("tokens", [])]
+        if not token_ids:
+            continue
         enriched = {**market, "token_ids": token_ids}
         liquid.append(enriched)
 
     logger.info(
-        f"Market filter: {len(liquid)} active markets "
-        f"(active=True, accepting_orders=True) "
+        f"Market filter: {len(liquid)} CLOB markets "
+        f"(active=True, enable_order_book=True, accepting_orders=True) "
         f"from {len(all_markets)} total"
     )
     return liquid
