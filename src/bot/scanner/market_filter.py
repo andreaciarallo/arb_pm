@@ -1,10 +1,11 @@
 """
-Liquid market fetching and volume filtering.
+Liquid market fetching and filtering.
 
-Fetches all markets from the CLOB API (paginated), filters to markets with
-sufficient 24h volume and that are currently active (not closed).
+Fetches all markets from the CLOB API (paginated), filters to markets that
+are active and accepting orders.
 
-Uses config.min_market_volume as the volume threshold (D-19).
+Note: The CLOB markets endpoint does not return volume data. Filtering is
+done via active=True and accepting_orders=True flags instead.
 """
 from loguru import logger
 from py_clob_client.client import ClobClient
@@ -46,10 +47,9 @@ async def fetch_liquid_markets(client: ClobClient, config: BotConfig) -> list[di
 
     liquid = []
     for market in all_markets:
-        if market.get("closed", True):
+        if not market.get("active", False):
             continue
-        volume = float(market.get("volume", 0.0))
-        if volume < config.min_market_volume:
+        if not market.get("accepting_orders", False):
             continue
 
         # Extract token IDs for WebSocket subscription
@@ -58,8 +58,8 @@ async def fetch_liquid_markets(client: ClobClient, config: BotConfig) -> list[di
         liquid.append(enriched)
 
     logger.info(
-        f"Market filter: {len(liquid)} liquid markets "
-        f"(volume >= ${config.min_market_volume:,.0f}) "
+        f"Market filter: {len(liquid)} active markets "
+        f"(active=True, accepting_orders=True) "
         f"from {len(all_markets)} total"
     )
     return liquid
