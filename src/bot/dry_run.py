@@ -96,7 +96,8 @@ async def run(
 
             # Detection
             yes_no_opps = detect_yes_no_opportunities(priced_markets, cache, config)
-            cross_opps = detect_cross_market_opportunities(priced_markets, cache, config)
+            # Cap cross-market scan at 100 priced markets to prevent O(n²) blowup
+            cross_opps = detect_cross_market_opportunities(priced_markets[:100], cache, config)
             all_opps = yes_no_opps + cross_opps
 
             # Enqueue to SQLite writer (non-blocking)

@@ -45,6 +45,12 @@ def detect_yes_no_opportunities(
     """
     opportunities: list[ArbitrageOpportunity] = []
 
+    # Diagnostic counters
+    both_cached = 0
+    depth_fails = 0
+    spread_fails = 0
+    best_sum = 2.0  # track lowest YES_ask + NO_ask seen
+
     for market in markets:
         tokens = market.get("tokens", [])
         if len(tokens) < 2:
@@ -70,6 +76,7 @@ def detect_yes_no_opportunities(
         if yes_price is None or no_price is None:
             continue  # not yet in cache — wait for WebSocket data
 
+        both_cached += 1
         yes_ask = yes_price.yes_ask
         no_ask = no_price.yes_ask  # NO token's ask price is stored in yes_ask field
 
@@ -77,9 +84,14 @@ def detect_yes_no_opportunities(
         if yes_ask >= 1.0 or no_ask >= 1.0:
             continue
 
+        pair_sum = yes_ask + no_ask
+        if pair_sum < best_sum:
+            best_sum = pair_sum
+
         # Gate 2: Depth check
         depth = min(yes_price.yes_depth, no_price.yes_depth)
         if depth < config.min_order_book_depth:
+            depth_fails += 1
             continue
 
         # Category-aware fee model
@@ -94,6 +106,7 @@ def detect_yes_no_opportunities(
 
         # Gate 3: Profit threshold
         if net_spread < threshold:
+            spread_fails += 1
             continue
 
         # Compute confidence score (simple proxy — refined in Phase 3)
@@ -122,5 +135,12 @@ def detect_yes_no_opportunities(
             f"cat={category} gross={gross_spread:.3f} net={net_spread:.3f} "
             f"depth=${depth:.0f}"
         )
+
+    best_sum_str = f"{best_sum:.4f}" if best_sum < 2.0 else "n/a"
+    logger.info(
+        f"YES/NO scan: {both_cached} pairs cached | best_sum={best_sum_str} | "
+        f"depth_fails={depth_fails} spread_fails={spread_fails} | "
+        f"{len(opportunities)} opps"
+    )
 
     return opportunities
