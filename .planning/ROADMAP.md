@@ -65,7 +65,7 @@ Plans:
 - [x] 03-01-PLAN.md — BotConfig Phase 3 params + Modified Kelly position sizing (RISK-01)
 - [x] 03-02-PLAN.md — FAK order client: create_order+post_order(FAK) + REST fill verification (EXEC-01, EXEC-02, EXEC-04)
 - [x] 03-03-PLAN.md — Execution engine: VWAP gate + retry-then-hedge one-leg risk (EXEC-03, EXEC-04)
-- [ ] 03-04-PLAN.md — RiskGate: stop-loss, circuit breaker (5m→10m→20m backoff), kill switch (RISK-02, RISK-03, RISK-04)
+- [x] 03-04-PLAN.md — RiskGate: stop-loss, circuit breaker (5m→10m→20m backoff), kill switch (RISK-02, RISK-03, RISK-04)
 - [ ] 03-05-PLAN.md — live_run.py integration + trades table + --live flag in main.py (EXEC-01, EXEC-02, EXEC-03, EXEC-04, RISK-01, RISK-02, RISK-03, RISK-04)
 
 ### Phase 4: Observability & Monitoring
@@ -88,7 +88,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Infrastructure Foundation | 4/4 | Complete   | 2026-03-28 |
 | 2. Market Data & Detection | 6/6 | Complete   | 2026-03-28 |
-| 3. Execution & Risk Controls | 3/5 | In Progress|  |
+| 3. Execution & Risk Controls | 4/5 | In Progress|  |
 | 4. Observability & Monitoring | 0/4 | Not started | - |
 
 ---
