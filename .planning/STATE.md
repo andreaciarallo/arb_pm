@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-03-28T14:13:10Z"
+status: executing
+stopped_at: Completed 03-01-PLAN.md (Modified Kelly position sizing)
+last_updated: "2026-03-29T16:49:59.493Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  completed_phases: 2
+  total_plans: 15
+  completed_plans: 11
+  percent: 73
 ---
 
 # Project State
@@ -32,15 +33,15 @@ progress:
 
 ## Current Position
 
-Phase: 02 (market-data-detection) — COMPLETE
-Plan: 6 of 6 (all plans complete)
+Phase: 03 (execution-risk-controls) — EXECUTING
+Plan: 1 of 5
 **Phase:** 2
 **Plan:** 06 (COMPLETE)
-**Status:** Phase 2 complete — all plans executed
+**Status:** Executing Phase 03
 
 **Progress:**
 
-[██████████] 100%
+[███████░░░] 73%
 
 **Active Branch:** None
 
@@ -63,6 +64,7 @@ Plan: 6 of 6 (all plans complete)
 | Phase 02 P03 | 8 | 2 tasks | 4 files |
 | Phase 02 P05 | 2 | 1 task | 2 files |
 | Phase 02 P06 | 15 | 2 tasks | 7 files |
+| Phase 03 P01 | 7 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -106,6 +108,8 @@ Plan: 6 of 6 (all plans complete)
 - [Phase 02-06]: dry_run.run() accepts db_path parameter for testability (defaults to /data/bot.db from DATA_DIR env)
 - [Phase 02-06]: check_health() called with NO args — plan had bug showing check_health(client); corrected from health.py signature
 - [Phase 02-06]: Idle while-loop replaced with asyncio.run(dry_run.run(config, client)) in main.py
+- [Phase 03]: kelly_size() returns 0.0 (not min floor) when Kelly formula yields below-minimum — caller decides to skip, never auto-promote (D-01)
+- [Phase 03]: Modified Kelly uses sqrt(p) in denominator (arxiv 2508.03474): f = (b*p - q) / (b*sqrt(p)) — execution probability p = min(1.0, depth/target_size)
 
 ### Open Questions
 
@@ -132,8 +136,8 @@ Plan: 6 of 6 (all plans complete)
 
 ## Session Continuity
 
-**Last Session:** 2026-03-28T14:13:10Z
-**Stopped At:** Completed 02-06-PLAN.md (SQLite storage + 24h dry-run scanner loop)
+**Last Session:** 2026-03-29T16:49:59.490Z
+**Stopped At:** Completed 03-01-PLAN.md (Modified Kelly position sizing)
 **Next Session:** Phase 2 complete — proceed to Phase 3 (live execution)
 
 ---

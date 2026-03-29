@@ -90,7 +90,7 @@
 | EXEC-02 | Phase 3 | Pending |
 | EXEC-03 | Phase 3 | Pending |
 | EXEC-04 | Phase 3 | Pending |
-| RISK-01 | Phase 3 | Pending |
+| RISK-01 | Phase 3 | Complete |
 | RISK-02 | Phase 3 | Pending |
 | RISK-03 | Phase 3 | Pending |
 | RISK-04 | Phase 3 | Pending |
