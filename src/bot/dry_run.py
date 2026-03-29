@@ -84,9 +84,16 @@ async def run(
             # HTTP polling fallback for stale markets
             refreshed = await poll_stale_markets(client, cache, markets, config)
 
+            # Only run detection on markets with cached price data — avoids
+            # O(n²) cross-market scan over 44k markets with no price data yet.
+            cached_ids = set(cache.get_all_fresh(config.ws_stale_threshold_seconds * 10))
+            priced_markets = [m for m in markets if any(
+                tid in cached_ids for tid in m.get("token_ids", [])
+            )]
+
             # Detection
-            yes_no_opps = detect_yes_no_opportunities(markets, cache, config)
-            cross_opps = detect_cross_market_opportunities(markets, cache, config)
+            yes_no_opps = detect_yes_no_opportunities(priced_markets, cache, config)
+            cross_opps = detect_cross_market_opportunities(priced_markets, cache, config)
             all_opps = yes_no_opps + cross_opps
 
             # Enqueue to SQLite writer (non-blocking)
