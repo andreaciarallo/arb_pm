@@ -56,12 +56,16 @@ def normalize_order_book(book) -> MarketPrice | None:
     bids = _get(book, "bids", [])
 
     try:
-        yes_ask, yes_depth = _price_size(asks[0])
+        # Sort ascending by price so asks[0] is the best (lowest) ask.
+        # Polymarket CLOB returns asks sorted descending (highest first).
+        sorted_asks = sorted(asks, key=lambda a: _price_size(a)[0])
+        yes_ask, yes_depth = _price_size(sorted_asks[0])
     except (KeyError, ValueError, TypeError, IndexError) as e:
         logger.warning(f"normalize_order_book: malformed ask for {token_id}: {e}")
         return None
 
     try:
+        # Bids are sorted descending (highest first) — bids[0] is the best bid.
         yes_bid = _price_size(bids[0])[0] if bids else 0.0
     except (KeyError, ValueError, TypeError):
         yes_bid = 0.0

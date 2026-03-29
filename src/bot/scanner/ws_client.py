@@ -65,8 +65,11 @@ class WebSocketClient:
             return  # no ask data — skip
 
         try:
-            yes_ask = float(sells[0]["price"])
-            yes_depth = float(sells[0]["size"])
+            # Sort ascending by price so sells[0] is the best (lowest) ask.
+            # Polymarket CLOB WebSocket returns sells sorted descending (highest first).
+            best_sell = min(sells, key=lambda s: float(s["price"]))
+            yes_ask = float(best_sell["price"])
+            yes_depth = float(best_sell["size"])
             yes_bid = float(buys[0]["price"]) if buys else yes_ask - 0.02
         except (KeyError, ValueError, IndexError) as e:
             logger.debug(f"Failed to parse book event for {token_id}: {e}")
