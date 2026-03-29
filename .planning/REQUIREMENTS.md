@@ -88,7 +88,7 @@
 | DATA-06 | Phase 2 | Complete |
 | EXEC-01 | Phase 3 | Complete |
 | EXEC-02 | Phase 3 | Complete |
-| EXEC-03 | Phase 3 | Pending |
+| EXEC-03 | Phase 3 | Complete |
 | EXEC-04 | Phase 3 | Complete |
 | RISK-01 | Phase 3 | Complete |
 | RISK-02 | Phase 3 | Pending |
