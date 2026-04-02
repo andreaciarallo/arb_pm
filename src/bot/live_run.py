@@ -118,10 +118,12 @@ async def run(
 
     # Register SIGTERM and SIGINT to activate kill switch immediately
     loop = asyncio.get_running_loop()
+    _stop_event = asyncio.Event()
 
     def _handle_signal():
         logger.warning("Shutdown signal received — activating kill switch")
         risk_gate.activate_kill_switch()
+        _stop_event.set()  # interrupt any in-progress sleep immediately
 
     loop.add_signal_handler(signal.SIGTERM, _handle_signal)
     loop.add_signal_handler(signal.SIGINT, _handle_signal)
@@ -210,10 +212,13 @@ async def run(
 
             cycle += 1
 
-            # Wait for next scan cycle
+            # Wait for next scan cycle — but wake immediately on SIGTERM
             sleep_time = max(0, config.scan_interval_seconds - cycle_duration)
             if sleep_time > 0:
-                await asyncio.sleep(sleep_time)
+                try:
+                    await asyncio.wait_for(_stop_event.wait(), timeout=sleep_time)
+                except asyncio.TimeoutError:
+                    pass  # normal cycle end — continue scanning
 
     except asyncio.CancelledError:
         logger.info("Live run cancelled")
