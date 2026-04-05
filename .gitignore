@@ -24,3 +24,6 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# Infrastructure documentation (contains VPS IP, deployment details)
+current-infrastructure.md
