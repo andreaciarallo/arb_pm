@@ -224,6 +224,22 @@ Median < 100ms: PASS
 **Gate:** Median must be `< 100ms`. Expect ~30–40ms for HEL1. If median is above 60ms,
 something is wrong with routing — investigate before proceeding.
 
+### Step 4.2.5 — Get wallet address for funding
+
+The FAK order test requires ~$2 USDC in the wallet. Get your wallet address:
+
+```bash
+# Run locally (reads secrets.env from repo)
+python scripts/get_wallet_address.py
+
+# Or on the VPS
+ssh root@NEW_VPS_IP "cd /opt/arbbot && docker compose exec bot python scripts/get_wallet_address.py"
+```
+
+Send ~$2 USDC (Polygon network only) to the printed address before running Step 4.3.
+
+---
+
 ### Step 4.3 — UAT Step 3: FAK order placement
 
 This is the definitive test. Places a non-crossing FAK BUY at price=0.01 (will never fill).
