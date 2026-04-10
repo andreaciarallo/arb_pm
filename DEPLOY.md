@@ -227,7 +227,9 @@ something is wrong with routing — investigate before proceeding.
 ### Step 4.3 — UAT Step 3: FAK order placement
 
 This is the definitive test. Places a non-crossing FAK BUY at price=0.01 (will never fill).
-Uses the Glenn Youngkin 2024 market token — a near-resolved market safe for testing.
+Uses a live market from the sampling pool — dynamically fetched to avoid stale token IDs.
+
+**Note:** Wallet must have ~$2 USDC balance for the order to be accepted.
 
 ```bash
 docker compose exec bot python -c "
@@ -239,14 +241,22 @@ import asyncio
 async def test():
     cfg = load_config()
     client = build_client(cfg)
-    # Glenn Youngkin 2024 market YES token
-    token_id = '21742633143463906290569050155826241533067272736897614950488156847949938836455'
-    result = await place_fak_order(client, token_id, 'BUY', price=0.01, size=2.0)
+    # Fetch an active market dynamically (avoids stale token IDs)
+    markets = client.get_sampling_markets()
+    if not markets or 'data' not in markets or len(markets['data']) == 0:
+        print('FAIL — no active markets available')
+        return
+    token_id = markets['data'][0]['tokens'][0]['token_id']
+    print(f'Testing with token: {token_id}')
+    # place_fak_order signature: (client, token_id, price, size_usd, side)
+    result = await place_fak_order(client, token_id, 0.01, 2.0, 'BUY')
     print('Result:', result)
     if result is not None:
         print('PASS — order accepted by CLOB (not filled, price too low)')
+    elif 'not enough balance' in str(result):
+        print('FAIL — wallet needs ~\$2 USDC for test')
     else:
-        print('FAIL — returned None. Check logs for 403 (still geoblocked?)')
+        print('FAIL — order rejected, check logs')
 
 asyncio.run(test())
 "
