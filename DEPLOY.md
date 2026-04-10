@@ -236,7 +236,20 @@ python scripts/get_wallet_address.py
 ssh root@NEW_VPS_IP "cd /opt/arbbot && docker compose exec bot python scripts/get_wallet_address.py"
 ```
 
-Send ~$2 USDC (Polygon network only) to the printed address before running Step 4.3.
+**Funding options:**
+
+1. **Direct from exchange** (easiest): Buy USDC on Coinbase/Binance/Kraken, withdraw to your wallet address selecting **Polygon network**
+2. **Bridge from Ethereum**: If you have USDC on Ethereum, bridge via [polygon.technology/bridge](https://polygon.technology/bridge)
+3. **CEX to CEX transfer**: Send USDC to an exchange that supports Polygon withdrawals, then withdraw to your wallet
+
+**⚠️ Critical:** Send USDC on **Polygon (MATIC) network only**:
+- ✅ Polygon / MATIC network — correct
+- ❌ Ethereum / ERC20 — wrong chain (funds won't appear)
+- ❌ BSC, Solana, Arbitrum — wrong chains
+
+Polymarket operates on Polygon, so the bot's wallet must hold USDC on that specific chain.
+
+Send ~$2 USDC to the printed address before running Step 4.3.
 
 ---
 
