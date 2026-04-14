@@ -33,7 +33,7 @@ class BotConfig:
 
     # Phase 1: Optional notification channels
     telegram_bot_token: str | None = None
-    discord_webhook_url: str | None = None
+    telegram_chat_id: str | None = None  # Numeric chat ID as string (D-04 — optional, not in REQUIRED_SECRETS)
 
     # Phase 2: Market scanning parameters (D-08, D-09, D-11, D-19)
     min_market_volume: float = 1000.0         # USD 24h volume filter (D-19)
@@ -84,5 +84,5 @@ def load_config() -> BotConfig:
         polygon_rpc_http=os.environ["POLYGON_RPC_HTTP"],
         polygon_rpc_ws=os.environ["POLYGON_RPC_WS"],
         telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN"),
-        discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL"),
+        telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID"),
     )
