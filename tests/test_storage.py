@@ -5,6 +5,173 @@ import os
 from datetime import datetime
 import pytest
 
+# ---------------------------------------------------------------------------
+# Phase 4: arb_pairs table tests (TDD — written before implementation)
+# ---------------------------------------------------------------------------
+
+
+def _make_arb_pair(**kwargs):
+    defaults = dict(
+        arb_id="arb-001",
+        yes_trade_id="trade-yes-001",
+        no_trade_id="trade-no-001",
+        market_id="0xabc",
+        market_question="Will X happen?",
+        yes_entry_price=0.40,
+        no_entry_price=0.60,
+        size_usd=100.0,
+        gross_pnl=2.50,
+        fees_usd=0.80,
+        net_pnl=1.70,
+        entry_time="2026-04-15T10:00:00",
+        exit_time="2026-04-15T10:05:00",
+        hold_seconds=300.0,
+    )
+    defaults.update(kwargs)
+    return defaults
+
+
+def test_init_arb_pairs_table_creates_table():
+    """init_arb_pairs_table() creates the arb_pairs table."""
+    from bot.storage.schema import init_arb_pairs_table
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='arb_pairs'"
+        )
+        assert cursor.fetchone() is not None
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_init_arb_pairs_table_idempotent():
+    """Calling init_arb_pairs_table() twice does not raise."""
+    from bot.storage.schema import init_arb_pairs_table
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        init_arb_pairs_table(conn)  # Must not raise
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_init_arb_pairs_table_creates_market_id_index():
+    """init_arb_pairs_table() creates idx_arb_pairs_market_id index."""
+    from bot.storage.schema import init_arb_pairs_table
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_arb_pairs_market_id'"
+        )
+        assert cursor.fetchone() is not None
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_init_arb_pairs_table_creates_entry_time_index():
+    """init_arb_pairs_table() creates idx_arb_pairs_entry_time index."""
+    from bot.storage.schema import init_arb_pairs_table
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_arb_pairs_entry_time'"
+        )
+        assert cursor.fetchone() is not None
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_insert_arb_pair_inserts_row():
+    """insert_arb_pair() inserts a row with all 14 fields."""
+    from bot.storage.schema import init_arb_pairs_table, insert_arb_pair
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        pair = _make_arb_pair()
+        insert_arb_pair(conn, pair)
+        cursor = conn.execute("SELECT COUNT(*) FROM arb_pairs")
+        assert cursor.fetchone()[0] == 1
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_insert_arb_pair_values_stored_correctly():
+    """insert_arb_pair() stores all fields with correct values."""
+    from bot.storage.schema import init_arb_pairs_table, insert_arb_pair
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        pair = _make_arb_pair()
+        insert_arb_pair(conn, pair)
+        cursor = conn.execute(
+            "SELECT arb_id, yes_trade_id, no_trade_id, market_id, market_question, "
+            "yes_entry_price, no_entry_price, size_usd, gross_pnl, fees_usd, "
+            "net_pnl, entry_time, exit_time, hold_seconds FROM arb_pairs"
+        )
+        row = cursor.fetchone()
+        assert row[0] == "arb-001"
+        assert row[1] == "trade-yes-001"
+        assert row[2] == "trade-no-001"
+        assert row[3] == "0xabc"
+        assert row[4] == "Will X happen?"
+        assert abs(row[5] - 0.40) < 0.0001   # yes_entry_price
+        assert abs(row[6] - 0.60) < 0.0001   # no_entry_price
+        assert abs(row[7] - 100.0) < 0.0001  # size_usd
+        assert abs(row[8] - 2.50) < 0.0001   # gross_pnl
+        assert abs(row[9] - 0.80) < 0.0001   # fees_usd
+        assert abs(row[10] - 1.70) < 0.0001  # net_pnl
+        assert row[11] == "2026-04-15T10:00:00"
+        assert row[12] == "2026-04-15T10:05:00"
+        assert abs(row[13] - 300.0) < 0.0001  # hold_seconds
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_insert_arb_pair_ignore_duplicate():
+    """INSERT OR IGNORE: inserting same arb_id twice does not raise."""
+    from bot.storage.schema import init_arb_pairs_table, insert_arb_pair
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_arb_pairs_table(conn)
+        pair = _make_arb_pair()
+        insert_arb_pair(conn, pair)
+        insert_arb_pair(conn, pair)  # Same arb_id — must not raise
+        cursor = conn.execute("SELECT COUNT(*) FROM arb_pairs")
+        assert cursor.fetchone()[0] == 1  # Still only 1 row
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
 pytestmark = pytest.mark.unit
 
 
