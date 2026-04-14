@@ -74,11 +74,16 @@ Plans:
 **Requirements**: OBS-01, OBS-02, OBS-03, OBS-04
 **Success Criteria** (what must be TRUE):
   1. All trades are logged to SQLite with PnL, execution costs, and capital efficiency metrics
-  2. User receives instant Telegram/Discord alerts for trade executions and errors
+  2. User receives instant Telegram alerts for trade executions and errors (Telegram only per D-01)
   3. Local dashboard displays live metrics: bot status, open positions, daily PnL
   4. Per-arb analytics are tracked and viewable (entry/exit prices, hold time, net profit after fees)
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 4 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0: test scaffolds (test_storage.py extensions, test_telegram.py, test_dashboard.py) + requirements.txt additions (OBS-01, OBS-02, OBS-03, OBS-04)
+- [ ] 04-02-PLAN.md — Storage layer: arb_pairs table + insert_arb_pair() + insert_trade() fees_usd fix + BotConfig update (OBS-01, OBS-04)
+- [ ] 04-03-PLAN.md — TelegramAlerter: fire-and-forget notifications module (OBS-02)
+- [ ] 04-04-PLAN.md — Dashboard + integration: FastAPI app + live_run.py wiring + engine.py arb_id + docker-compose port 8080 (OBS-01, OBS-02, OBS-03, OBS-04)
 
 ---
 
