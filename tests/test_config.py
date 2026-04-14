@@ -57,7 +57,7 @@ def test_optional_secrets_default_none():
         from bot.config import load_config
         config = load_config()
     assert config.telegram_bot_token is None
-    assert config.discord_webhook_url is None
+    assert config.telegram_chat_id is None  # D-04: replaces discord_webhook_url
 
 
 def test_wallet_address_derivation():

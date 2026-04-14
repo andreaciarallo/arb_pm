@@ -172,6 +172,59 @@ def test_insert_arb_pair_ignore_duplicate():
         conn.close()
         os.unlink(db_path)
 
+
+def test_insert_trade_fees_usd_not_zero():
+    """insert_trade() stores the supplied fees_usd value (not the hardcoded 0.0 placeholder)."""
+    from bot.storage.schema import init_trades_table, insert_trade
+    from bot.execution.engine import ExecutionResult
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_trades_table(conn)
+        result = ExecutionResult(
+            market_id="cond_fees", leg="yes", side="BUY", token_id="tok_yes",
+            price=0.48, size=10.0, order_id="ord_fees", status="filled",
+            size_filled=10.0, kelly_size_usd=10.0, vwap_price=0.48, error_msg=None,
+        )
+        insert_trade(conn, result, "Fees market", "trade-fees-001", fees_usd=0.5)
+        row = conn.execute(
+            "SELECT fees_usd FROM trades WHERE trade_id='trade-fees-001'"
+        ).fetchone()
+        assert row is not None
+        assert abs(row[0] - 0.5) < 0.0001  # fees_usd stored, not 0.0
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
+def test_insert_trade_fees_usd_default_zero():
+    """insert_trade() defaults fees_usd to 0.0 when not provided (backwards compat)."""
+    from bot.storage.schema import init_trades_table, insert_trade
+    from bot.execution.engine import ExecutionResult
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        init_trades_table(conn)
+        result = ExecutionResult(
+            market_id="cond_compat", leg="no", side="BUY", token_id="tok_no",
+            price=0.52, size=10.0, order_id="ord_compat", status="filled",
+            size_filled=10.0, kelly_size_usd=10.0, vwap_price=0.52, error_msg=None,
+        )
+        insert_trade(conn, result, "Compat market", "trade-compat-001")  # no fees_usd kwarg
+        row = conn.execute(
+            "SELECT fees_usd FROM trades WHERE trade_id='trade-compat-001'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == 0.0  # default preserved
+    finally:
+        conn.close()
+        os.unlink(db_path)
+
+
 pytestmark = pytest.mark.unit
 
 
