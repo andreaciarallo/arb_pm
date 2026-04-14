@@ -38,7 +38,7 @@ Declared values (all multiples of 4):
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon gaps, badge padding, table cell inner padding (vertical) |
-| sm | 8px | Between label and value within a stat card, row gap in status bar |
+| sm | 8px | Between label and value within a stat card, row gap in status bar, table row vertical padding |
 | md | 16px | Card inner padding, form field spacing, table cell padding (horizontal) |
 | lg | 24px | Between dashboard sections (status bar, metrics row, trades table) |
 | xl | 32px | Page-level padding (top/bottom of body) |
@@ -46,7 +46,6 @@ Declared values (all multiples of 4):
 | 3xl | 64px | Not used in this phase |
 
 Exceptions:
-- Table rows use 6px vertical padding (between xs=4 and sm=8) to maximize trade row density without cramping. This is the only non-multiple-of-4 value permitted.
 - Monospace data columns (price, P&L, size) use 12px horizontal padding to preserve alignment.
 
 ---
@@ -60,7 +59,7 @@ All fonts are system stack — no Google Fonts, no CDN. VPS offline operation is
 | Body | 13px | 400 | 1.4 | system-ui, -apple-system, "Segoe UI", sans-serif | Default text, table cell text, status descriptions |
 | Label | 11px | 600 | 1.2 | system-ui, -apple-system, "Segoe UI", sans-serif | Column headers, section labels, badge text, metric unit suffixes |
 | Heading | 16px | 600 | 1.2 | system-ui, -apple-system, "Segoe UI", sans-serif | Section headings (Status, Trades, Analytics), page title |
-| Display | 24px | 700 | 1.0 | system-ui, -apple-system, "Segoe UI", sans-serif | Daily P&L figure, capital balance (the single most important number on the page) |
+| Display | 24px | 600 | 1.0 | system-ui, -apple-system, "Segoe UI", sans-serif | Daily P&L figure, capital balance (the single most important number on the page) |
 | Mono | 13px | 400 | 1.4 | "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace | All numeric data: prices, P&L values, sizes, timestamps, arb IDs |
 
 **Typography rules:**
@@ -122,7 +121,7 @@ Layout: `display: flex; justify-content: space-between; align-items: center;`
 - Border: `1px solid --border`
 - Padding: `md` (16px)
 - Label: 11px, weight 600, `--text-secondary`
-- Value: 24px (Daily P&L card) or 16px (other cards), weight 700, `--text-primary` (with P&L color override)
+- Value: 24px (Daily P&L card) or 16px (other cards), weight 600, `--text-primary` (with P&L color override)
 - Border-radius: 6px
 
 Cards in order: Daily P&L | Total Capital | Open Positions | Total Trades | 7-Day Efficiency | 30-Day Efficiency
