@@ -343,22 +343,26 @@ async def test_detected_at_stored_as_iso_string():
 # ---------------------------------------------------------------------------
 
 def _make_trade_result():
-    """Minimal trade result object for insert_trade tests."""
+    """Minimal trade result object for insert_trade tests (all 12 required fields)."""
     from unittest.mock import MagicMock
     result = MagicMock()
-    result.trade_id = "trade-abc-123"
-    result.token_id = "0xtoken"
+    result.market_id = "cond-p4-test"
+    result.leg = "yes"
     result.side = "BUY"
-    result.size = 10.0
+    result.token_id = "0xtoken"
     result.price = 0.40
+    result.size = 10.0
+    result.size_filled = 10.0
+    result.order_id = "ord-p4-001"
     result.status = "filled"
-    result.submitted_at = "2026-04-15T10:00:00Z"
-    result.filled_at = "2026-04-15T10:00:01Z"
+    result.kelly_size_usd = 10.0
+    result.vwap_price = 0.40
+    result.error_msg = None
     return result
 
 
-def test_insert_trade_fees_usd_not_zero():
-    """insert_trade with fees_usd=0.5 stores 0.5, not the 0.0 placeholder."""
+def test_insert_trade_fees_usd_not_zero_p4():
+    """insert_trade with fees_usd=0.5 stores 0.5, not the 0.0 placeholder (P4 stub)."""
     from bot.storage.schema import init_db, init_trades_table, insert_trade
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
@@ -393,8 +397,8 @@ def test_arb_pairs_table_exists():
         os.unlink(db_path)
 
 
-def _make_arb_pair():
-    """Return a dict with all 14 arb_pairs fields from D-11."""
+def _make_arb_pair_p4():
+    """Return a dict with all 14 arb_pairs fields from D-11 (Phase 4 tests)."""
     return {
         "arb_id": "arb-uuid-0001",
         "yes_trade_id": "trade-yes-001",
@@ -421,7 +425,7 @@ def test_insert_arb_pair_creates_row():
     try:
         conn = init_db(db_path)
         init_arb_pairs_table(conn)
-        pair = _make_arb_pair()
+        pair = _make_arb_pair_p4()
         insert_arb_pair(conn, pair)
         cursor = conn.execute(
             "SELECT arb_id FROM arb_pairs WHERE arb_id = 'arb-uuid-0001'"
@@ -442,7 +446,7 @@ def test_insert_arb_pair_all_columns():
     try:
         conn = init_db(db_path)
         init_arb_pairs_table(conn)
-        pair = _make_arb_pair()
+        pair = _make_arb_pair_p4()
         insert_arb_pair(conn, pair)
         cursor = conn.execute("SELECT * FROM arb_pairs WHERE arb_id = 'arb-uuid-0001'")
         row = cursor.fetchone()
@@ -475,7 +479,7 @@ def test_insert_arb_pair_idempotent():
     try:
         conn = init_db(db_path)
         init_arb_pairs_table(conn)
-        pair = _make_arb_pair()
+        pair = _make_arb_pair_p4()
         insert_arb_pair(conn, pair)
         insert_arb_pair(conn, pair)  # duplicate — must not raise
         cursor = conn.execute("SELECT COUNT(*) FROM arb_pairs WHERE arb_id = 'arb-uuid-0001'")
