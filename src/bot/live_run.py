@@ -19,18 +19,22 @@ import time
 import uuid
 from datetime import datetime, timedelta
 
+import uvicorn
 from loguru import logger
 
 from bot.config import BotConfig
+from bot.dashboard.app import AppState, create_app
 from bot.detection.cross_market import detect_cross_market_opportunities
+from bot.detection.fee_model import get_taker_fee
 from bot.detection.yes_no_arb import detect_yes_no_opportunities
 from bot.execution.engine import execute_opportunity
+from bot.notifications.telegram import TelegramAlerter
 from bot.risk.gate import RiskGate
 from bot.scanner.http_poller import poll_stale_markets
 from bot.scanner.market_filter import fetch_liquid_markets
 from bot.scanner.price_cache import PriceCache
 from bot.scanner.ws_client import WebSocketClient
-from bot.storage.schema import init_db, init_trades_table, insert_trade
+from bot.storage.schema import init_arb_pairs_table, init_db, init_trades_table, insert_arb_pair, insert_trade
 from bot.storage.writer import AsyncWriter
 
 _KILL_FILE = "/app/data/KILL"
@@ -78,6 +82,82 @@ async def _execute_kill_switch(
     logger.warning("Kill switch complete — scan loop exiting")
 
 
+def _derive_status_label(risk_gate) -> tuple[str, str]:
+    """Return (status_label, description) from risk gate state for daily summary."""
+    if risk_gate.is_kill_switch_active():
+        return "stopped", "Kill switch active"
+    if risk_gate.is_circuit_breaker_open():
+        return "blocked", "Circuit breaker open"
+    if risk_gate.is_stop_loss_triggered():
+        return "paused", "Stop-loss triggered"
+    return "running", "Active"
+
+
+async def _start_dashboard(app_state: AppState, port: int = 8080) -> None:
+    """Start the FastAPI dashboard as a background task (D-07, D-09)."""
+    app = create_app(app_state)
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=port,
+        loop="none",
+        log_level="warning",
+        access_log=False,
+    )
+    server = uvicorn.Server(config)
+    logger.info(f"Dashboard starting on port {port}")
+    await server.serve()
+
+
+async def _daily_summary_task(alerter: TelegramAlerter, app_state: AppState) -> None:
+    """Fire daily P&L summary at midnight UTC (D-05 event 5)."""
+    while True:
+        now = datetime.utcnow()
+        tomorrow_midnight = datetime.combine(
+            now.date() + timedelta(days=1),
+            datetime.min.time()
+        )
+        sleep_seconds = (tomorrow_midnight - now).total_seconds()
+        await asyncio.sleep(sleep_seconds)
+        try:
+            today_str = datetime.utcnow().strftime("%Y-%m-%d")
+            conn = app_state.conn
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM trades WHERE submitted_at >= ?",
+                (today_str,)
+            )
+            trade_count = cursor.fetchone()[0] or 0
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM trades WHERE submitted_at >= ? AND net_pnl > 0",
+                (today_str,)
+            )
+            win_count = cursor.fetchone()[0] or 0
+            loss_count = max(0, trade_count - win_count)
+            cursor = conn.execute(
+                "SELECT COUNT(*), SUM(net_pnl), SUM(fees_usd) FROM arb_pairs WHERE entry_time >= ?",
+                (today_str,)
+            )
+            row = cursor.fetchone()
+            arb_count = row[0] or 0
+            pnl_usd = row[1] or 0.0
+            fees_usd = row[2] or 0.0
+            eff_pct = (pnl_usd / app_state.total_capital_usd * 100.0) if app_state.total_capital_usd > 0 else None
+            status_label, _ = _derive_status_label(app_state.risk_gate)
+            await alerter.send_daily_summary(
+                date_str=today_str + " UTC",
+                pnl_usd=pnl_usd,
+                trade_count=trade_count,
+                win_count=win_count,
+                loss_count=loss_count,
+                arb_count=arb_count,
+                fees_usd=fees_usd,
+                efficiency_pct=eff_pct,
+                bot_status=status_label,
+            )
+        except Exception as e:
+            logger.warning(f"Daily summary task error: {e}")
+
+
 async def run(
     config: BotConfig,
     client,
@@ -104,6 +184,7 @@ async def run(
     # Initialize SQLite (opportunities table + trades table)
     conn = init_db(db_path)
     init_trades_table(conn)
+    init_arb_pairs_table(conn)
     writer = AsyncWriter(conn)
     writer.start()
 
@@ -115,6 +196,19 @@ async def run(
         circuit_breaker_window_seconds=config.circuit_breaker_window_seconds,
         circuit_breaker_cooldown_seconds=config.circuit_breaker_cooldown_seconds,
     )
+
+    # Phase 4: Initialize alerter and dashboard
+    alerter = TelegramAlerter(
+        token=config.telegram_bot_token,
+        chat_id=config.telegram_chat_id,
+    )
+    app_state = AppState(
+        conn=conn,
+        risk_gate=risk_gate,
+        total_capital_usd=config.total_capital_usd,
+    )
+    dashboard_task = asyncio.create_task(_start_dashboard(app_state))
+    summary_task = asyncio.create_task(_daily_summary_task(alerter, app_state))
 
     # Register SIGTERM and SIGINT to activate kill switch immediately
     loop = asyncio.get_running_loop()
@@ -185,11 +279,74 @@ async def run(
             # Execute on all opportunities — gated by risk controls
             if not risk_gate.is_blocked():
                 for opp in all_opps:
-                    results = await execute_opportunity(client, opp, config, risk_gate)
+                    arb_id, results = await execute_opportunity(client, opp, config, risk_gate)
+                    yes_trade_id: str | None = None
+                    no_trade_id: str | None = None
+                    yes_result = None
+                    no_result = None
+                    entry_time = datetime.utcnow().isoformat()
+
                     for result in results:
                         trade_id = str(uuid.uuid4())
-                        insert_trade(conn, result, opp.market_question, trade_id)
+                        # Compute real fees_usd at fill time (D-13)
+                        fees_usd = 0.0
+                        if result.status in ("filled", "partial") and result.size_filled > 0:
+                            fees_usd = result.size_filled * get_taker_fee(opp.category, config)
+                        insert_trade(conn, result, opp.market_question, trade_id, fees_usd=fees_usd)
                         total_executed += 1
+
+                        # Track YES and NO legs for arb_pairs write (D-12)
+                        if result.leg == "yes" and result.status == "filled":
+                            yes_trade_id = trade_id
+                            yes_result = result
+                        elif result.leg == "no" and result.status == "filled":
+                            no_trade_id = trade_id
+                            no_result = result
+
+                    # Write arb_pairs ONLY if BOTH legs confirmed filled (D-12)
+                    # Hedge path (no_result is None) does NOT write arb_pairs (D-19)
+                    if yes_result and no_result and yes_trade_id and no_trade_id:
+                        exit_time = datetime.utcnow().isoformat()  # Pitfall 6: compute at write time
+                        hold_secs = (
+                            datetime.fromisoformat(exit_time) - datetime.fromisoformat(entry_time)
+                        ).total_seconds()
+                        yes_fees = yes_result.size_filled * get_taker_fee(opp.category, config)
+                        no_fees = no_result.size_filled * get_taker_fee(opp.category, config)
+                        total_fees = yes_fees + no_fees
+                        gross_pnl = (1.0 - yes_result.price - no_result.price) * yes_result.size_filled
+                        net_pnl = gross_pnl - total_fees
+                        arb_pair = {
+                            "arb_id": arb_id,
+                            "yes_trade_id": yes_trade_id,
+                            "no_trade_id": no_trade_id,
+                            "market_id": opp.market_id,
+                            "market_question": opp.market_question,
+                            "yes_entry_price": yes_result.price,
+                            "no_entry_price": no_result.price,
+                            "size_usd": yes_result.size_filled,
+                            "gross_pnl": gross_pnl,
+                            "fees_usd": total_fees,
+                            "net_pnl": net_pnl,
+                            "entry_time": entry_time,
+                            "exit_time": exit_time,
+                            "hold_seconds": hold_secs,
+                        }
+                        insert_arb_pair(conn, arb_pair)
+                        app_state.daily_pnl_usd += net_pnl
+                        # Fire-and-forget Telegram alert (D-05 event 1)
+                        asyncio.create_task(alerter.send_arb_complete(
+                            market_question=opp.market_question,
+                            yes_entry_price=yes_result.price,
+                            no_entry_price=no_result.price,
+                            size_usd=yes_result.size_filled,
+                            hold_seconds=hold_secs,
+                            gross_pnl=gross_pnl,
+                            fees_usd=total_fees,
+                            net_pnl=net_pnl,
+                        ))
+
+                    # Update dashboard state counters
+                    app_state.total_trades += len(results)
             elif risk_gate.is_stop_loss_triggered():
                 logger.warning("Stop-loss active — skipping execution this cycle")
             elif risk_gate.is_circuit_breaker_open():
@@ -211,6 +368,8 @@ async def run(
             )
 
             cycle += 1
+            app_state.cycle_count = cycle
+            app_state.last_scan_utc = datetime.utcnow().strftime("%H:%M:%S")
 
             # Wait for next scan cycle — but wake immediately on SIGTERM
             sleep_time = max(0, config.scan_interval_seconds - cycle_duration)
@@ -223,11 +382,19 @@ async def run(
     except asyncio.CancelledError:
         logger.info("Live run cancelled")
     finally:
+        dashboard_task.cancel()
+        summary_task.cancel()
         ws_task.cancel()
         try:
             await ws_task
         except asyncio.CancelledError:
             pass
+
+        for t in (dashboard_task, summary_task):
+            try:
+                await t
+            except (asyncio.CancelledError, Exception):
+                pass
 
         await writer.stop()
         conn.close()

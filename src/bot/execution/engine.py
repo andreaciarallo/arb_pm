@@ -23,6 +23,7 @@ Behavioral contracts (D-01, D-03, D-05, EXEC-03, EXEC-04):
 Returns list[ExecutionResult] for trade logging.
 """
 import asyncio
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -118,7 +119,7 @@ async def execute_opportunity(
     risk_gate,
     yes_token_id: str = "",
     no_token_id: str = "",
-) -> list[ExecutionResult]:
+) -> tuple[str, list[ExecutionResult]]:
     """
     Execute a detected ArbitrageOpportunity through the full order lifecycle.
 
@@ -131,8 +132,10 @@ async def execute_opportunity(
         no_token_id: Conditional token ID for NO side. Empty → skip with reason.
 
     Returns:
-        List of ExecutionResult entries (one per order attempt, including hedge).
+        Tuple of (arb_id, results) where arb_id is a UUID and results is the list
+        of ExecutionResult entries (one per order attempt, including hedge).
     """
+    arb_id = str(uuid.uuid4())
     results: list[ExecutionResult] = []
 
     # ------------------------------------------------------------------
@@ -156,7 +159,7 @@ async def execute_opportunity(
             vwap_price=0.0,
             error_msg="missing token IDs",
         ))
-        return results
+        return arb_id, results
 
     # ------------------------------------------------------------------
     # Gate 1: VWAP gate (D-05) — reject if VWAP-adjusted spread is thin
@@ -184,7 +187,7 @@ async def execute_opportunity(
             vwap_price=vwap_spread,
             error_msg="vwap_spread below threshold",
         ))
-        return results
+        return arb_id, results
 
     # ------------------------------------------------------------------
     # Gate 2: Kelly sizing (D-01)
@@ -218,7 +221,7 @@ async def execute_opportunity(
             vwap_price=vwap_spread,
             error_msg="kelly_size returned 0.0",
         ))
-        return results
+        return arb_id, results
 
     logger.info(
         f"Executing opportunity | market={opp.market_id} "
@@ -253,7 +256,7 @@ async def execute_opportunity(
             vwap_price=opp.vwap_yes,
             error_msg="place_fak_order returned None",
         ))
-        return results
+        return arb_id, results
 
     yes_order_id = yes_resp.get("orderID")
 
@@ -288,7 +291,7 @@ async def execute_opportunity(
             vwap_price=opp.vwap_yes,
             error_msg="verify_fill_rest returned False",
         ))
-        return results
+        return arb_id, results
 
     # YES confirmed filled
     results.append(ExecutionResult(
@@ -402,4 +405,4 @@ async def execute_opportunity(
                 f"Hedge SELL FAILED — manual intervention required for market={opp.market_id}"
             )
 
-    return results
+    return arb_id, results

@@ -44,7 +44,9 @@ async def test_live_run_exits_on_kill_file():
              patch("bot.live_run.WebSocketClient") as mock_ws, \
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=[]), \
-             patch("bot.live_run.detect_cross_market_opportunities", return_value=[]):
+             patch("bot.live_run.detect_cross_market_opportunities", return_value=[]), \
+             patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
+             patch("bot.live_run._daily_summary_task", new_callable=AsyncMock):
             mock_ws.return_value.run = AsyncMock()
             from bot import live_run
             # Run with 1-second duration to avoid infinite loop
@@ -118,7 +120,9 @@ async def test_risk_gate_blocked_skips_execution():
              patch("bot.live_run.detect_yes_no_opportunities", return_value=[MagicMock()]), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=[]), \
              patch("bot.live_run.execute_opportunity", new_callable=AsyncMock) as mock_exec, \
-             patch("bot.live_run.RiskGate") as mock_rg_cls:
+             patch("bot.live_run.RiskGate") as mock_rg_cls, \
+             patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
+             patch("bot.live_run._daily_summary_task", new_callable=AsyncMock):
             mock_ws.return_value.run = AsyncMock()
             mock_rg = MagicMock()
             mock_rg.is_kill_switch_active.return_value = False
