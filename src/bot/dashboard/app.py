@@ -421,6 +421,10 @@ let countdown = 10;
 let consecutiveFails = 0;
 let lastSuccessTime = null;
 
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function pnlStr(v, decimals = 4) {
   if (v === null || v === undefined) return '\u2014';
   const abs = Math.abs(v).toFixed(decimals);
@@ -484,7 +488,7 @@ function renderTrades(trades) {
     const leg = (t.leg || '').toUpperCase();
     return '<tr>' +
       '<td class="mono center" style="font-size:11px">' + formatTime(t.submitted_at) + '</td>' +
-      '<td class="market-cell" title="' + (t.market_question || '') + '">' + (t.market_question || '').substring(0,48) + '</td>' +
+      '<td class="market-cell" title="' + esc(t.market_question) + '">' + esc((t.market_question || '').substring(0,48)) + '</td>' +
       '<td class="center" style="font-size:11px;font-weight:600">' + leg + '</td>' +
       '<td class="mono right">$' + (t.size || 0).toFixed(2) + '</td>' +
       '<td class="mono right">' + (t.price || 0).toFixed(4) + '</td>' +
@@ -507,7 +511,7 @@ function renderArbs(arbs) {
     const grossCls = pnlClass(a.gross_pnl);
     return '<tr>' +
       '<td class="mono" style="font-size:11px">' + (a.arb_id || '').substring(0,8) + '</td>' +
-      '<td class="market-cell">' + (a.market_question || '').substring(0,48) + '</td>' +
+      '<td class="market-cell">' + esc((a.market_question || '').substring(0,48)) + '</td>' +
       '<td class="mono right">' + (a.yes_entry_price || 0).toFixed(4) + '</td>' +
       '<td class="mono right">' + (a.no_entry_price || 0).toFixed(4) + '</td>' +
       '<td class="mono right">$' + (a.size_usd || 0).toFixed(2) + '</td>' +

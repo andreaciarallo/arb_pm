@@ -313,7 +313,8 @@ async def run(
                         yes_fees = yes_result.size_filled * get_taker_fee(opp.category, config)
                         no_fees = no_result.size_filled * get_taker_fee(opp.category, config)
                         total_fees = yes_fees + no_fees
-                        gross_pnl = (1.0 - yes_result.price - no_result.price) * yes_result.size_filled
+                        n_contracts = yes_result.size_filled / yes_result.price  # USD / price = contracts
+                        gross_pnl = (1.0 - yes_result.price - no_result.price) * n_contracts
                         net_pnl = gross_pnl - total_fees
                         arb_pair = {
                             "arb_id": arb_id,
