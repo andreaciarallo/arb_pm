@@ -11,7 +11,7 @@
 - [x] **Phase 1: Infrastructure Foundation** — VPS deployment, RPC endpoints, Docker containerization, wallet integration (completed 2026-03-28)
 - [x] **Phase 2: Market Data & Detection** — Real-time scanning, YES+NO arbitrage detection, dry-run mode (completed 2026-03-28)
 - [x] **Phase 3: Execution & Risk Controls** — Automated trade execution with circuit breakers and position limits (completed 2026-03-29)
-- [ ] **Phase 4: Observability & Monitoring** — Trade logging, alerts, live dashboard
+- [x] **Phase 4: Observability & Monitoring** — Trade logging, alerts, live dashboard (completed 2026-04-15)
 
 ---
 
@@ -80,10 +80,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Wave 0: test scaffolds (test_storage.py extensions, test_telegram.py, test_dashboard.py) + requirements.txt additions (OBS-01, OBS-02, OBS-03, OBS-04)
-- [ ] 04-02-PLAN.md — Storage layer: arb_pairs table + insert_arb_pair() + insert_trade() fees_usd fix + BotConfig update (OBS-01, OBS-04)
-- [ ] 04-03-PLAN.md — TelegramAlerter: fire-and-forget notifications module (OBS-02)
-- [ ] 04-04-PLAN.md — Dashboard + integration: FastAPI app + live_run.py wiring + engine.py arb_id + docker-compose port 8080 (OBS-01, OBS-02, OBS-03, OBS-04)
+- [x] 04-01-PLAN.md — Wave 0: test scaffolds (test_storage.py extensions, test_telegram.py, test_dashboard.py) + requirements.txt additions (OBS-01, OBS-02, OBS-03, OBS-04)
+- [x] 04-02-PLAN.md — Storage layer: arb_pairs table + insert_arb_pair() + insert_trade() fees_usd fix + BotConfig update (OBS-01, OBS-04)
+- [x] 04-03-PLAN.md — TelegramAlerter: fire-and-forget notifications module (OBS-02)
+- [x] 04-04-PLAN.md — Dashboard + integration: FastAPI app + live_run.py wiring + engine.py arb_id + docker-compose port 8080 (OBS-01, OBS-02, OBS-03, OBS-04)
 
 ---
 
@@ -94,7 +94,7 @@ Plans:
 | 1. Infrastructure Foundation | 4/4 | Complete   | 2026-03-28 |
 | 2. Market Data & Detection | 6/6 | Complete   | 2026-03-28 |
 | 3. Execution & Risk Controls | 5/5 | Complete   | 2026-03-29 |
-| 4. Observability & Monitoring | 0/4 | Not started | - |
+| 4. Observability & Monitoring | 4/4 | Complete   | 2026-04-15 |
 
 ---
 
