@@ -79,7 +79,11 @@ def _query_open_positions_count(conn: sqlite3.Connection) -> int:
         cursor = conn.execute(
             "SELECT COUNT(*) FROM trades t "
             "LEFT JOIN arb_pairs ap ON ap.yes_trade_id = t.trade_id "
-            "WHERE t.leg = 'yes' AND t.status = 'filled' AND ap.arb_id IS NULL"
+            "LEFT JOIN trades hedge ON hedge.token_id = t.token_id "
+            "  AND hedge.leg = 'hedge' AND hedge.status = 'hedged' "
+            "  AND hedge.market_id = t.market_id "
+            "WHERE t.leg = 'yes' AND t.status = 'filled' "
+            "  AND ap.arb_id IS NULL AND hedge.trade_id IS NULL"
         )
         return cursor.fetchone()[0] or 0
     except Exception as e:
@@ -136,7 +140,7 @@ def _derive_bot_status(risk_gate: Any) -> tuple[str, str]:
         return "stopped", "Kill switch active — all positions closing"
 
     if risk_gate.is_circuit_breaker_open():
-        cooldown_remaining = max(0.0, risk_gate._cb_cooldown_until - time.time())
+        cooldown_remaining = risk_gate.cb_cooldown_remaining()
         minutes = int(cooldown_remaining // 60)
         seconds = int(cooldown_remaining % 60)
         return "blocked", f"Circuit breaker open — cooldown {minutes}m {seconds}s remaining"
@@ -622,7 +626,7 @@ def create_app(app_state: AppState) -> FastAPI:
 
         bot_status, bot_status_description = _derive_bot_status(rg)
 
-        cooldown_remaining = max(0.0, getattr(rg, "_cb_cooldown_until", 0.0) - time.time())
+        cooldown_remaining = rg.cb_cooldown_remaining()
 
         return {
             "bot_status": bot_status,

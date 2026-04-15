@@ -13,6 +13,8 @@ Locked decisions (D-01 through D-06):
 """
 from __future__ import annotations
 
+import html
+
 from loguru import logger
 from telegram import Bot
 from telegram.error import TelegramError
@@ -90,8 +92,9 @@ class TelegramAlerter:
         pnl_sign = "+" if net_pnl >= 0 else ""
         gross_sign = "+" if gross_pnl >= 0 else ""
 
+        escaped_q = html.escape(market_question[:60])
         text = (
-            f"<b>Arb complete — {market_question[:60]}</b>\n\n"
+            f"<b>Arb complete — {escaped_q}</b>\n\n"
             f"YES: {yes_entry_price:.4f} | NO: {no_entry_price:.4f}\n"
             f"Size: ${size_usd:.2f} | Hold: {hold_str}\n"
             f"Gross: {gross_sign}${gross_pnl:.4f} | Fees: ${fees_usd:.4f}\n"

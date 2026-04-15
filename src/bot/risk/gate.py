@@ -196,6 +196,10 @@ class RiskGate:
             or self.is_circuit_breaker_open()
         )
 
+    def cb_cooldown_remaining(self) -> float:
+        """Seconds remaining on circuit breaker cooldown. Returns 0.0 if not active."""
+        return max(0.0, self._cb_cooldown_until - time.time())
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
