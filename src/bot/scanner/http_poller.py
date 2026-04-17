@@ -19,6 +19,18 @@ _dead_tokens: set[str] = set()  # tokens that returned 404 — never retry
 _poll_offset: int = 0  # rotating offset so we cycle through all markets over time
 
 
+def reset_poller_state() -> None:
+    """
+    Reset module-level poller state.
+
+    Call this between tests to prevent cross-test pollution from _dead_tokens,
+    or at bot reinit to clear any false-positive 404 bans from transient errors.
+    """
+    global _dead_tokens, _poll_offset
+    _dead_tokens = set()
+    _poll_offset = 0
+
+
 async def poll_stale_markets(
     client: ClobClient,
     cache: PriceCache,
