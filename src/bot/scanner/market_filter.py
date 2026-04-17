@@ -8,7 +8,6 @@ Note: The CLOB markets endpoint does not return volume data. Filtering is
 done via active=True and accepting_orders=True flags instead.
 """
 import asyncio
-import time
 
 from loguru import logger
 from py_clob_client.client import ClobClient
@@ -21,12 +20,14 @@ _RETRY_BACKOFF_START = 5  # seconds to wait on first 429
 _MAX_RETRIES = 5
 
 
-def _get_markets_page(client: ClobClient, **kwargs) -> dict:
+async def _get_markets_page(client: ClobClient, **kwargs) -> dict:
     """
     Fetch one page of markets with retry on 429.
 
     Retries up to _MAX_RETRIES times with exponential backoff starting at
-    _RETRY_BACKOFF_START seconds. Raises on non-429 errors or exhausted retries.
+    _RETRY_BACKOFF_START seconds. Uses asyncio.sleep (non-blocking) so the
+    event loop remains responsive during rate-limit waits. Raises on non-429
+    errors or exhausted retries.
     """
     backoff = _RETRY_BACKOFF_START
     for attempt in range(_MAX_RETRIES):
@@ -38,7 +39,7 @@ def _get_markets_page(client: ClobClient, **kwargs) -> dict:
                     f"Rate limited (429) fetching markets page — "
                     f"waiting {backoff}s (attempt {attempt + 1}/{_MAX_RETRIES})"
                 )
-                time.sleep(backoff)
+                await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60)
             else:
                 raise
@@ -65,7 +66,7 @@ async def fetch_liquid_markets(client: ClobClient, config: BotConfig) -> list[di
         if cursor:
             kwargs["next_cursor"] = cursor
 
-        response = _get_markets_page(client, **kwargs)
+        response = await _get_markets_page(client, **kwargs)
         page_markets = response.get("data", [])
         all_markets.extend(page_markets)
         page += 1
