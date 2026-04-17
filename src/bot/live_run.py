@@ -51,11 +51,16 @@ async def _execute_kill_switch(
     Active kill switch (D-08): cancel all open orders, sell all held positions, flush writer.
 
     Steps:
-    1. cancel_all() — sync, wrapped in run_in_executor to avoid blocking the event loop
-    2. Query trades table for status IN ('filled', 'partial') to find open positions
-    3. Place FAK SELL for each open position at price=0.01 (market-aggressive)
-    4. Flush the async writer queue to ensure all rows are persisted
+    1. Flush writer queue — drain any pending inserts so the trades table is fully
+       committed before we read it (prevents reading stale data during concurrent writes)
+    2. cancel_all() — sync, wrapped in run_in_executor to avoid blocking the event loop
+    3. Query trades table for unhedged YES positions (open positions only)
+    4. Place FAK SELL for each open position at price=0.01 (market-aggressive)
+    5. Final flush to persist any records written during the close sequence
     """
+    # Step 1: Flush writer first — ensures all queued inserts are committed before
+    # we query the trades table for open positions (prevents race with AsyncWriter._worker)
+    await writer.flush()
     logger.warning("Kill switch executing — cancelling all pending orders")
     loop = asyncio.get_running_loop()
     try:
@@ -64,10 +69,16 @@ async def _execute_kill_switch(
     except Exception as exc:
         logger.error(f"cancel_all() failed: {exc}")
 
-    # Sell open positions: query trades table for status IN ('filled', 'partial')
+    # Sell open positions: unhedged YES legs only (matching dashboard open-positions logic)
     try:
         cursor = conn.execute(
-            "SELECT token_id, size FROM trades WHERE status IN ('filled', 'partial')"
+            "SELECT t.token_id, t.size FROM trades t "
+            "LEFT JOIN arb_pairs ap ON ap.yes_trade_id = t.trade_id "
+            "LEFT JOIN trades hedge ON hedge.token_id = t.token_id "
+            "  AND hedge.leg = 'hedge' AND hedge.status = 'hedged' "
+            "  AND hedge.market_id = t.market_id "
+            "WHERE t.leg = 'yes' AND t.status IN ('filled', 'partial') "
+            "  AND ap.arb_id IS NULL AND hedge.trade_id IS NULL"
         )
         rows = cursor.fetchall()
         for token_id, size in rows:
