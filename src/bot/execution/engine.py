@@ -163,6 +163,13 @@ async def execute_opportunity(
 
     # ------------------------------------------------------------------
     # Gate 1: VWAP gate (D-05) — reject if VWAP-adjusted spread is thin
+    #
+    # NOTE (WR-07): simulate_vwap() is implemented correctly but is not yet
+    # wired to live order book data. opp.vwap_yes/vwap_no are set to best_ask
+    # by the detection engine (a known deferral from Phase 3). The gate still
+    # provides a useful check against resolved markets (vwap >= 1.0 sentinel).
+    # Phase 5 will pass the live order book to execute_opportunity() and compute
+    # real multi-level VWAP here.
     # ------------------------------------------------------------------
     vwap_yes = simulate_vwap([], 0.0) if opp.vwap_yes >= 1.0 else opp.vwap_yes
     vwap_no = simulate_vwap([], 0.0) if opp.vwap_no >= 1.0 else opp.vwap_no
