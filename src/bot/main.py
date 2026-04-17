@@ -41,7 +41,7 @@ def main() -> None:
         sys.exit(1)
 
     logger.info("Secrets loaded successfully ({} required, {} optional)",
-                6, 2 - [config.telegram_bot_token, config.discord_webhook_url].count(None))
+                6, 1 - [config.telegram_bot_token].count(None))
 
     # Step 2: Verify CLOB API is reachable before doing anything else
     logger.info("Checking Polymarket CLOB connectivity...")
