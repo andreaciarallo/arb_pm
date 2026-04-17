@@ -260,6 +260,28 @@ async def execute_opportunity(
 
     yes_order_id = yes_resp.get("orderID")
 
+    # Guard: if the CLOB response is missing an orderID, fail fast rather than
+    # passing None into verify_fill_rest (which would waste 10 × 500ms polling None).
+    if not yes_order_id:
+        logger.error(
+            f"YES response missing orderID for market={opp.market_id}: {yes_resp}"
+        )
+        results.append(ExecutionResult(
+            market_id=opp.market_id,
+            leg="yes",
+            side="BUY",
+            token_id=yes_token_id,
+            price=opp.yes_ask,
+            size=kelly_usd,
+            order_id=None,
+            status="failed",
+            size_filled=0.0,
+            kelly_size_usd=kelly_usd,
+            vwap_price=opp.vwap_yes,
+            error_msg="missing orderID in YES response",
+        ))
+        return arb_id, results
+
     # ------------------------------------------------------------------
     # YES verification (EXEC-04, REST-only — intentional Phase 3 design)
     # verify_fill_rest polls get_order() every 500ms × 10 = 5s timeout.
