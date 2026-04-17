@@ -314,8 +314,13 @@ async def run(
                         yes_fees = yes_result.size_filled * get_taker_fee(opp.category, config)
                         no_fees = no_result.size_filled * get_taker_fee(opp.category, config)
                         total_fees = yes_fees + no_fees
-                        n_contracts = yes_result.size_filled / yes_result.price  # USD / price = contracts
-                        gross_pnl = (1.0 - yes_result.price - no_result.price) * n_contracts
+                        # Gross P&L for equal-USD sizing: each leg costs size_filled USD.
+                        # At resolution, the winning leg pays out size_filled / win_price
+                        # dollars. Total receipts = size_filled / yes_price (if YES wins)
+                        # or size_filled / no_price (if NO wins) — exactly one side pays $1
+                        # per contract and one pays $0.  Since only one side resolves at $1,
+                        # the gross gain is size_filled * (1 - yes_price - no_price) / yes_price.
+                        gross_pnl = yes_result.size_filled * (1.0 - yes_result.price - no_result.price) / yes_result.price
                         net_pnl = gross_pnl - total_fees
                         arb_pair = {
                             "arb_id": arb_id,
