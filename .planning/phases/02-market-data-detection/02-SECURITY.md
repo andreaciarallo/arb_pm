@@ -10,11 +10,11 @@
 
 ## Summary
 
-**Threats Closed:** 16/17
-**Threats Open:** 1/17
+**Threats Closed:** 17/17
+**Threats Open:** 0/17 — SECURED
 **Unregistered Flags:** 0
 
-One open threat (T-09-NaN) is a non-critical data integrity gap: `float("nan")` and `float("inf")` pass Python's `float()` conversion silently and are not blocked at the ingestion boundary. A compromised or malfunctioning exchange server could inject these values. Impact in Phase 2 is limited to producing `nan` net_spread values that would be logged to SQLite; no capital is at risk in dry-run mode. This must be resolved before Phase 3 live execution.
+All threats closed. T-09 (NaN/Inf propagation) resolved by adding `math.isfinite()` guards in `ws_client.py._handle_message()` and `normalizer.py.normalize_order_book()` (commit 1e75864).
 
 ---
 
@@ -30,7 +30,7 @@ One open threat (T-09-NaN) is a non-critical data integrity gap: `float("nan")` 
 | T-06 | Availability — 429 rate limit stalls scan | mitigate | CLOSED | market_filter.py:37-44 — exponential backoff 5s→10s→20s→40s→60s cap, 5 retries |
 | T-07 | Availability — WS disconnect stops price updates | mitigate | CLOSED | ws_client.py:126-138 — `ConnectionClosed` caught, backoff 1→2→4→8→30s cap, loop forever |
 | T-08 | Logic — resolved market flagged as arbitrage | mitigate | CLOSED | yes_no_arb.py:84 — `if yes_ask >= 1.0 or no_ask >= 1.0: continue` |
-| T-09 | Logic — NaN/Inf propagation in float arithmetic | mitigate | OPEN | `float("nan")` and `float("inf")` are not rejected by `float()` and will pass the try/except guards in ws_client.py and normalizer.py. No `math.isfinite()` check exists at any ingestion point. NaN prices would enter PriceCache and produce NaN net_spread values in detection output. |
+| T-09 | Logic — NaN/Inf propagation in float arithmetic | mitigate | CLOSED | `math.isfinite()` guard added in `ws_client.py` (after line 72) and `normalizer.py` (after line 62) — non-finite values are rejected and logged before entering PriceCache (commit 1e75864) |
 | T-10 | Logic — trades on illiquid markets (depth gate) | mitigate | CLOSED | yes_no_arb.py:93 — `if depth < config.min_order_book_depth: continue`; cross_market.py:139 — same gate |
 | T-11 | Logic — bid-side prices used for detection | mitigate | CLOSED | ws_client.py:7 — "Prices are always parsed from 'sells' (ask side) per D-05"; ws_client.py:70 uses `sells`; normalizer.py uses `asks` array |
 | T-12 | Code Execution — eval() on external data | mitigate | CLOSED | No `eval()` found across all Phase 2 src files; external data enters only via `json.loads()` and `float()` |

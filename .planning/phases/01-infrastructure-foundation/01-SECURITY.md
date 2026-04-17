@@ -4,10 +4,10 @@ asvs_level: 1
 audited: 2026-04-17
 auditor: gsd-security-auditor (claude-sonnet-4-6)
 block_on: critical
-result: OPEN_THREATS
+result: SECURED
 threats_total: 9
-threats_closed: 7
-threats_open: 2
+threats_closed: 9
+threats_open: 0
 unregistered_flags: 2
 ---
 
@@ -15,7 +15,7 @@ unregistered_flags: 2
 
 **Phase:** 01 — infrastructure-foundation
 **ASVS Level:** 1
-**Closed:** 7/9 | **Open:** 2/9
+**Closed:** 9/9 | **Open:** 0/9 — SECURED
 **Unregistered flags:** 2
 
 ---
@@ -28,8 +28,8 @@ unregistered_flags: 2
 | SEC-02 | Credential Leakage via Logs | mitigate | CLOSED | `src/bot/config.py` lines 7-8 doc comment prohibits raw RPC URL logging; `src/bot/main.py` lines 57-58 log "configured" string only; `scripts/get_wallet_address.py` lines 34-35 suppress exception messages that could embed key material |
 | SEC-03 | Insecure Base Image (Alpine musl) | mitigate | CLOSED | `Dockerfile` line 3: `FROM python:3.12-slim`; no `alpine` string present in Dockerfile |
 | SEC-04 | Secrets Baked into Docker Image Layers | mitigate | CLOSED | `Dockerfile` contains no `ENV` or `ARG` instructions carrying secret values; only `ENV PYTHONPATH=/app/src`; `docker-compose.yml` lines 29-30 use `env_file: secrets.env` for runtime injection |
-| SEC-05 | Container Running as Root | accept | OPEN | `Dockerfile` has no `USER` instruction — container runs as uid 0 by default. No plan formally accepted or documented this risk. See Accepted Risks log below. |
-| SEC-06 | Dashboard Port 8080 Publicly Exposed | accept | OPEN | `docker-compose.yml` lines 19-20 bind `0.0.0.0:8080:8080`. Plan 01-03 explicitly required no dashboard port (D-10: "no Phase 4 dashboard service yet"). Port was added during Phase 4 implementation without a registered acceptance. See Unregistered Flags below. |
+| SEC-05 | Container Running as Root | mitigate | CLOSED | `Dockerfile`: `RUN useradd -m -u 1001 botuser && chown -R botuser:botuser /app` + `USER botuser` added (commit 1e75864) |
+| SEC-06 | Dashboard Port 8080 Publicly Exposed | mitigate | CLOSED | `docker-compose.yml` port binding changed to `127.0.0.1:8080:8080` — localhost only, SSH tunnel required for remote access (commit 1e75864) |
 | SEC-07 | VPS Bootstrap via Pipe-to-Bash | accept | CLOSED | `scripts/setup_vps.sh` line 5 documents the pipe-to-bash pattern in the header comment. Operator explicitly reads and invokes this script — risk is operationally accepted. |
 | INFRA-04 | Silent Startup on Missing Secrets | mitigate | CLOSED | `src/bot/config.py` lines 73-78: all REQUIRED_SECRETS checked via list comprehension; `raise RuntimeError` lists missing variable names |
 | INFRA-05 | Wrong EOA Auth Type in ClobClient | mitigate | CLOSED | `src/bot/client.py` line 28: `signature_type=0`; present in both `build_client()` and `scripts/create_api_key.py` line 38 |
