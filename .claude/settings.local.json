@@ -3,7 +3,9 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:docs.polymarket.com)",
-      "Skill(gsd:plan-phase)"
+      "Skill(gsd:plan-phase)",
+      "Bash(node \"/Users/aciarallo001/.claude/get-shit-done/bin/gsd-tools.cjs\" phase complete \"01\")",
+      "WebFetch(domain:www.binance.com)"
     ]
   }
 }
