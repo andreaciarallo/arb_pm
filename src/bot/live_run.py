@@ -105,6 +105,7 @@ async def _start_dashboard(app_state: AppState, port: int = 8080) -> None:
         access_log=False,
     )
     server = uvicorn.Server(config)
+    server.install_signal_handlers = lambda: None  # Don't conflict with live_run signal handlers
     logger.info(f"Dashboard starting on port {port}")
     await server.serve()
 
