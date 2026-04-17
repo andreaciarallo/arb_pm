@@ -18,6 +18,10 @@ COPY src/ ./src/
 # Copy helper scripts (benchmark, API key creation)
 COPY scripts/ ./scripts/
 
+# Run as non-root user (SEC-05: defence-in-depth — limits blast radius if container is compromised)
+RUN useradd -m -u 1001 botuser && chown -R botuser:botuser /app
+USER botuser
+
 # Health check: verifies CLOB API is reachable.
 # --start-period=15s: allows time for startup before health checks begin
 # --interval=30s: check every 30 seconds

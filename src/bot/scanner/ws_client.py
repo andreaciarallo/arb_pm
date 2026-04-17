@@ -9,6 +9,7 @@ Data is written to the shared PriceCache.
 """
 import asyncio
 import json
+import math
 import time
 
 import websockets
@@ -73,6 +74,12 @@ class WebSocketClient:
             yes_bid = float(buys[0]["price"]) if buys else yes_ask - 0.02
         except (KeyError, ValueError, IndexError) as e:
             logger.debug(f"Failed to parse book event for {token_id}: {e}")
+            return
+
+        # T-09: reject NaN/Inf prices — float() accepts them silently but they
+        # corrupt downstream arithmetic and can pass comparison gates unexpectedly.
+        if not math.isfinite(yes_ask) or not math.isfinite(yes_depth):
+            logger.debug(f"Non-finite price/depth for {token_id}: ask={yes_ask} depth={yes_depth}")
             return
 
         # For YES/NO pairs, we receive separate events per token_id.

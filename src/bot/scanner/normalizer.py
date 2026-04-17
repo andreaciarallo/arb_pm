@@ -6,6 +6,7 @@ Handles edge cases: resolved markets, empty books, malformed data.
 
 This is a pure-function module — no side effects, no I/O.
 """
+import math
 import time
 
 from loguru import logger
@@ -62,6 +63,12 @@ def normalize_order_book(book) -> MarketPrice | None:
         yes_ask, yes_depth = _price_size(sorted_asks[0])
     except (KeyError, ValueError, TypeError, IndexError) as e:
         logger.warning(f"normalize_order_book: malformed ask for {token_id}: {e}")
+        return None
+
+    # T-09: reject NaN/Inf — float() accepts them silently but they corrupt
+    # downstream arithmetic and can pass comparison gates unexpectedly.
+    if not math.isfinite(yes_ask) or not math.isfinite(yes_depth):
+        logger.warning(f"normalize_order_book: non-finite price for {token_id}: ask={yes_ask}")
         return None
 
     try:
