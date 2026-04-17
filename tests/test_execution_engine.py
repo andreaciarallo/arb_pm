@@ -73,7 +73,7 @@ async def test_vwap_gate_low_spread_skips(mock_kelly):
     client = MagicMock()
     # vwap_yes=0.50, vwap_no=0.50 → vwap_spread = 1.0 - 0.50 - 0.50 = 0.0 < 0.015
     opp = _opp(vwap_yes=0.50, vwap_no=0.50, net_spread=0.03)
-    results = await execute_opportunity(client, opp, _config(), MagicMock())
+    _, results = await execute_opportunity(client, opp, _config(), MagicMock())
     assert any(r.status == "skipped" for r in results)
 
 
@@ -85,7 +85,7 @@ async def test_vwap_gate_low_spread_skips(mock_kelly):
 async def test_kelly_zero_returns_skipped(mock_kelly):
     """kelly_size returns 0.0 → status='skipped', no order placed."""
     client = MagicMock()
-    results = await execute_opportunity(client, _opp(), _config(), MagicMock())
+    _, results = await execute_opportunity(client, _opp(), _config(), MagicMock())
     assert any(r.status == "skipped" for r in results)
 
 
@@ -108,7 +108,7 @@ async def test_full_success_returns_two_filled_results(mock_verify, mock_kelly):
         client = MagicMock()
         risk_gate = MagicMock()
         risk_gate.is_kill_switch_active.return_value = False
-        results = await execute_opportunity(
+        _, results = await execute_opportunity(
             client, _opp(), _config(), risk_gate,
             yes_token_id="yes_tok", no_token_id="no_tok",
         )
@@ -125,7 +125,7 @@ async def test_full_success_returns_two_filled_results(mock_verify, mock_kelly):
 async def test_yes_leg_fails_no_exposure(mock_place, mock_kelly):
     """place_fak_order returns None for YES → failed result, NO never attempted."""
     client = MagicMock()
-    results = await execute_opportunity(
+    _, results = await execute_opportunity(
         client, _opp(), _config(), MagicMock(),
         yes_token_id="yes_tok", no_token_id="no_tok",
     )
@@ -161,7 +161,7 @@ async def test_no_leg_retry_then_hedge(mock_verify, mock_kelly):
         client = MagicMock()
         risk_gate = MagicMock()
         risk_gate.is_kill_switch_active.return_value = False
-        results = await execute_opportunity(
+        _, results = await execute_opportunity(
             client, _opp(), _config(), risk_gate,
             yes_token_id="yes_tok", no_token_id="no_tok",
         )
@@ -191,7 +191,7 @@ async def test_kill_switch_stops_no_retries(mock_verify, mock_kelly):
         risk_gate = MagicMock()
         # Kill switch is active from the first check inside the retry loop
         risk_gate.is_kill_switch_active.return_value = True
-        results = await execute_opportunity(
+        _, results = await execute_opportunity(
             client, _opp(), _config(), risk_gate,
             yes_token_id="yes_tok", no_token_id="no_tok",
         )
@@ -211,7 +211,7 @@ async def test_kill_switch_stops_no_retries(mock_verify, mock_kelly):
 async def test_yes_verify_false_aborts_no_leg(mock_verify, mock_place, mock_kelly):
     """YES response has orderID but verify_fill_rest returns False → NO not attempted."""
     client = MagicMock()
-    results = await execute_opportunity(
+    _, results = await execute_opportunity(
         client, _opp(), _config(), MagicMock(),
         yes_token_id="yes_tok", no_token_id="no_tok",
     )
@@ -235,5 +235,5 @@ async def test_vwap_gate_insufficient_depth_skips(mock_kelly):
         # vwap_yes will be overridden by simulate_vwap mock returning 1.0
         # 1.0 - 1.0 - 1.0 = -1.0 → deeply negative → skipped
         opp = _opp(vwap_yes=1.0, vwap_no=1.0, net_spread=0.03)
-        results = await execute_opportunity(client, opp, _config(), MagicMock())
+        _, results = await execute_opportunity(client, opp, _config(), MagicMock())
         assert any(r.status == "skipped" for r in results)
