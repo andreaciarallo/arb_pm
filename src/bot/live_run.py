@@ -351,6 +351,9 @@ async def run(
                         }
                         insert_arb_pair(conn, arb_pair)
                         app_state.daily_pnl_usd += net_pnl
+                        # Record loss for stop-loss tracking (D-06, WR-05)
+                        if net_pnl < 0:
+                            risk_gate.record_loss(abs(net_pnl))
                         # Fire-and-forget Telegram alert (D-05 event 1)
                         asyncio.create_task(alerter.send_arb_complete(
                             market_question=opp.market_question,
@@ -362,6 +365,17 @@ async def run(
                             fees_usd=total_fees,
                             net_pnl=net_pnl,
                         ))
+
+                    # Hedge path loss: YES filled but NO failed → hedge SELL at 0.01.
+                    # Record the realized loss so stop-loss tracks it (D-06, WR-05).
+                    # Loss = YES cost - hedge proceeds ≈ yes_size_filled * (yes_price - 0.01)
+                    if yes_result and not no_result:
+                        hedge_results = [r for r in results if r.leg == "hedge" and r.size_filled > 0]
+                        if hedge_results:
+                            hedge = hedge_results[0]
+                            hedge_loss = yes_result.size_filled * (yes_result.price - hedge.price)
+                            if hedge_loss > 0:
+                                risk_gate.record_loss(hedge_loss)
 
                     # Update dashboard state counters
                     app_state.total_trades += len(results)
