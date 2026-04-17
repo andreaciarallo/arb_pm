@@ -18,6 +18,7 @@ Expected output when sub-100ms requirement is met:
 
     Median < 100ms: PASS
 """
+import math
 import statistics
 import sys
 import time
@@ -49,7 +50,7 @@ def benchmark() -> bool:
             latencies.append(elapsed_ms)
 
     sorted_latencies = sorted(latencies)
-    p95_index = int(SAMPLES * 0.95) - 1  # 0-indexed, so index 18 for 20 samples
+    p95_index = max(0, int(math.ceil(SAMPLES * 0.95)) - 1)  # robust for any SAMPLES value
 
     print(f"Samples: {SAMPLES}")
     print(f"Mean:    {statistics.mean(latencies):.1f} ms")
