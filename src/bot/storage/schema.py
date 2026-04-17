@@ -116,6 +116,10 @@ _CREATE_TRADES_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_trades_market_id ON trades(market_id)",
     "CREATE INDEX IF NOT EXISTS idx_trades_submitted_at ON trades(submitted_at)",
     "CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status)",
+    # Composite index for the open-positions LEFT JOIN query used by the dashboard
+    # and kill switch: filters on leg='yes', status IN ('filled','partial'), then
+    # joins on (token_id, market_id) to find unhedged positions (CR-06).
+    "CREATE INDEX IF NOT EXISTS idx_trades_leg_status ON trades(leg, status, token_id, market_id)",
 ]
 
 _INSERT_TRADE = """
