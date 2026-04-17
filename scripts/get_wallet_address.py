@@ -29,6 +29,8 @@ try:
     account = Account.from_key(private_key)
     print(f"Wallet address: {account.address}")
     print(f"Network: Polygon (send USDC on Polygon only)")
-except Exception as e:
-    print(f"ERROR: Failed to derive address: {e}")
+except Exception:
+    # Do NOT propagate the exception message — some crypto libraries embed key
+    # material in error strings when the key format is invalid (WR-08).
+    print("ERROR: Failed to derive address. Check that WALLET_PRIVATE_KEY is a valid 32-byte hex private key.")
     sys.exit(1)
