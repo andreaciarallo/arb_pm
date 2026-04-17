@@ -125,6 +125,10 @@ async def _daily_summary_task(alerter: TelegramAlerter, app_state: AppState) -> 
     """Fire daily P&L summary at midnight UTC (D-05 event 5)."""
     while True:
         now = datetime.utcnow()
+        # Capture today_str BEFORE sleeping — this is the day whose summary we'll send.
+        # If captured after sleep, a drift of even 1ms past midnight yields the NEW day
+        # and the query returns 0 results for the day that just ended (WR-06).
+        today_str = now.strftime("%Y-%m-%d")
         tomorrow_midnight = datetime.combine(
             now.date() + timedelta(days=1),
             datetime.min.time()
@@ -132,7 +136,6 @@ async def _daily_summary_task(alerter: TelegramAlerter, app_state: AppState) -> 
         sleep_seconds = (tomorrow_midnight - now).total_seconds()
         await asyncio.sleep(sleep_seconds)
         try:
-            today_str = datetime.utcnow().strftime("%Y-%m-%d")
             conn = app_state.conn
             cursor = conn.execute(
                 "SELECT COUNT(*) FROM trades WHERE submitted_at >= ?",
