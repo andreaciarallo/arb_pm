@@ -12,19 +12,18 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Connect to Polymarket API for market data and trade execution — Validated in Phases 1-2
+- [x] Implement efficient market scanning strategy (not brute-force full scan) — Validated in Phase 2
+- [x] Detect cross-market mispricing opportunities in real-time — Validated in Phase 2
+- [x] Execute arbitrage trades automatically when opportunities found — Validated in Phases 3 + 5 (token ID wiring complete; EXEC-01–04 + RISK-01 reachable)
+- [x] Enforce maximum capital limit risk management — Validated in Phase 3 + 5 (Kelly gate, stop-loss, circuit breaker)
+- [x] Provide local dashboard with live metrics — Validated in Phase 4
+- [x] Deploy to cloud VPS for continuous operation — Validated in Phases 1 + VPS migration
 
 ### Active
 
-- [ ] Connect to Polymarket API for market data and trade execution
-- [ ] Implement efficient market scanning strategy (not brute-force full scan)
-- [ ] Detect cross-market mispricing opportunities in real-time
-- [ ] Execute arbitrage trades automatically when opportunities found
-- [ ] Enforce maximum capital limit risk management
-- [ ] Provide local dashboard with live metrics
-- [ ] Send alerts via Telegram/Discord
+- [ ] Send alerts via Telegram/Discord — Phase 6 (kill switch + circuit breaker wiring)
 - [ ] Track comprehensive metrics: PnL, per-arb analytics, execution costs, capital efficiency
-- [ ] Deploy to cloud VPS for continuous operation
 
 ### Out of Scope
 
