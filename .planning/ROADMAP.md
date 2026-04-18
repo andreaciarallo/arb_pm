@@ -143,7 +143,11 @@ Plans:
   2. `gate.py` captures the triggering error count before clearing `_error_timestamps` and exposes it as a property
   3. `live_run.py` passes the live triggering count (not static configured threshold) to `alerter.send_circuit_breaker_trip()`
   4. Unit tests confirm both fixes: NO-leg exhaustion trips CB; CB alert message shows live count
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — gate.py last_trip_error_count property + live_run.py CB alert argument fix + test_live_run.py updates (OBS-02)
+- [ ] 08-02-PLAN.md — engine.py NO exhaustion record_order_error() call + test_execution_engine.py RISK-03 tests (RISK-03)
 
 ---
 
@@ -158,7 +162,7 @@ Plans:
 | 5. Fix Token ID Execution Wiring | 0/2 | Pending | — |
 | 6. Wire Critical Telegram Alerts | 0/1 | Pending | — |
 | 7. Formal Verification — Phase 04 & 06 | 0/TBD | Pending | — |
-| 8. Fix Circuit Breaker & Alert Accuracy | 0/TBD | Pending | — |
+| 8. Fix Circuit Breaker & Alert Accuracy | 0/2 | Pending | — |
 
 ---
 
