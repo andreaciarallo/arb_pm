@@ -117,8 +117,6 @@ async def execute_opportunity(
     opp: ArbitrageOpportunity,
     config,
     risk_gate,
-    yes_token_id: str = "",
-    no_token_id: str = "",
 ) -> tuple[str, list[ExecutionResult]]:
     """
     Execute a detected ArbitrageOpportunity through the full order lifecycle.
@@ -128,8 +126,9 @@ async def execute_opportunity(
         opp: Detected ArbitrageOpportunity from detection engine.
         config: BotConfig (or compatible MagicMock with required attributes).
         risk_gate: Risk gate object with is_kill_switch_active() method.
-        yes_token_id: Conditional token ID for YES side. Empty → skip with reason.
-        no_token_id: Conditional token ID for NO side. Empty → skip with reason.
+
+    Token IDs are read from opp.yes_token_id and opp.no_token_id (D-02).
+    Empty token IDs → Gate 0 skip.
 
     Returns:
         Tuple of (arb_id, results) where arb_id is a UUID and results is the list
@@ -137,6 +136,10 @@ async def execute_opportunity(
     """
     arb_id = str(uuid.uuid4())
     results: list[ExecutionResult] = []
+
+    # Read token IDs from opportunity dataclass (D-02 — no longer passed as params)
+    yes_token_id = opp.yes_token_id
+    no_token_id = opp.no_token_id
 
     # ------------------------------------------------------------------
     # Gate 0: Token ID presence check
@@ -162,17 +165,41 @@ async def execute_opportunity(
         return arb_id, results
 
     # ------------------------------------------------------------------
-    # Gate 1: VWAP gate (D-05) — reject if VWAP-adjusted spread is thin
-    #
-    # NOTE (WR-07): simulate_vwap() is implemented correctly but is not yet
-    # wired to live order book data. opp.vwap_yes/vwap_no are set to best_ask
-    # by the detection engine (a known deferral from Phase 3). The gate still
-    # provides a useful check against resolved markets (vwap >= 1.0 sentinel).
-    # Phase 5 will pass the live order book to execute_opportunity() and compute
-    # real multi-level VWAP here.
+    # Gate 1: VWAP gate (D-05, D-03) — fetch fresh order books and simulate
+    # multi-level VWAP. Reject if VWAP-adjusted spread is below threshold.
     # ------------------------------------------------------------------
-    vwap_yes = simulate_vwap([], 0.0) if opp.vwap_yes >= 1.0 else opp.vwap_yes
-    vwap_no = simulate_vwap([], 0.0) if opp.vwap_no >= 1.0 else opp.vwap_no
+    # After Gate 0 — fetch fresh order books for VWAP simulation (D-03, resolves WR-07)
+    loop = asyncio.get_running_loop()
+    yes_book = None
+    no_book = None
+    try:
+        yes_book = await loop.run_in_executor(None, client.get_order_book, yes_token_id)
+        no_book = await loop.run_in_executor(None, client.get_order_book, no_token_id)
+    except Exception as exc:
+        logger.warning(
+            f"Order book fetch failed for VWAP gate | market={opp.market_id}: {exc} — skipping"
+        )
+        results.append(ExecutionResult(
+            market_id=opp.market_id, leg="skip", side="", token_id="",
+            price=0.0, size=0.0, order_id=None, status="skipped",
+            size_filled=0.0, kelly_size_usd=0.0, vwap_price=0.0,
+            error_msg="order book fetch failed for VWAP",
+        ))
+        return arb_id, results
+
+    # Extract asks — sort ascending (best ask first); CLOB returns descending (MEMORY.md critical finding)
+    yes_asks = sorted(
+        getattr(yes_book, "asks", []),
+        key=lambda a: float(getattr(a, "price", 1.0) if not isinstance(a, dict) else a.get("price", 1.0))
+    )
+    no_asks = sorted(
+        getattr(no_book, "asks", []),
+        key=lambda a: float(getattr(a, "price", 1.0) if not isinstance(a, dict) else a.get("price", 1.0))
+    )
+
+    target_size = config.total_capital_usd * config.kelly_max_capital_pct
+    vwap_yes = simulate_vwap(yes_asks, target_size)
+    vwap_no = simulate_vwap(no_asks, target_size)
     vwap_spread = 1.0 - vwap_yes - vwap_no
 
     if vwap_spread < config.min_net_profit_pct:
@@ -182,16 +209,9 @@ async def execute_opportunity(
         )
         results.append(ExecutionResult(
             market_id=opp.market_id,
-            leg="skip",
-            side="",
-            token_id="",
-            price=0.0,
-            size=0.0,
-            order_id=None,
-            status="skipped",
-            size_filled=0.0,
-            kelly_size_usd=0.0,
-            vwap_price=vwap_spread,
+            leg="skip", side="", token_id="",
+            price=0.0, size=0.0, order_id=None, status="skipped",
+            size_filled=0.0, kelly_size_usd=0.0, vwap_price=vwap_spread,
             error_msg="vwap_spread below threshold",
         ))
         return arb_id, results
