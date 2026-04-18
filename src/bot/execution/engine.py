@@ -418,6 +418,8 @@ async def execute_opportunity(
     # Hedge: if NO never filled, SELL YES at market-aggressive price=0.01
     # ------------------------------------------------------------------
     if not no_filled:
+        if hasattr(risk_gate, "record_order_error"):
+            risk_gate.record_order_error()
         logger.warning(
             f"NO leg exhausted all retries — triggering hedge SELL | "
             f"market={opp.market_id} price={_HEDGE_PRICE}"
