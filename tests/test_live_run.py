@@ -274,6 +274,7 @@ async def test_cb_alert_fires_on_trip():
             mock_rg.is_stop_loss_triggered.return_value = False
             mock_rg.is_circuit_breaker_open.side_effect = cb_open_side_effect
             mock_rg.circuit_breaker_errors = 5
+            mock_rg.last_trip_error_count = 5   # required after D-03 fix: live_run reads this
             mock_rg.cb_cooldown_remaining.return_value = 300.0
             mock_rg_cls.return_value = mock_rg
             from bot import live_run
@@ -320,3 +321,54 @@ async def test_cb_alert_no_duplicate():
 
         await asyncio.sleep(0)
         alerter_mock.send_circuit_breaker_trip.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_cb_alert_shows_live_count_not_static_threshold():
+    """CB alert passes last_trip_error_count (live=7), not circuit_breaker_errors (static=5)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = os.path.join(tmpdir, "test.db")
+        config = _test_config()
+        client = MagicMock()
+
+        alerter_mock = MagicMock()
+        alerter_mock.send_circuit_breaker_trip = AsyncMock(return_value=None)
+
+        # CB starts closed (False), then trips (True) on second call
+        cb_open_calls = [False, True]
+        call_count = [0]
+
+        def cb_open_side_effect():
+            idx = min(call_count[0], len(cb_open_calls) - 1)
+            result = cb_open_calls[idx]
+            call_count[0] += 1
+            return result
+
+        with patch("bot.live_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]), \
+             patch("bot.live_run.WebSocketClient") as mock_ws, \
+             patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
+             patch("bot.live_run.detect_yes_no_opportunities", return_value=[]), \
+             patch("bot.live_run.detect_cross_market_opportunities", return_value=[]), \
+             patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
+             patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
+             patch("bot.live_run.TelegramAlerter", return_value=alerter_mock), \
+             patch("bot.live_run.RiskGate") as mock_rg_cls:
+            mock_ws.return_value.run = AsyncMock()
+            mock_rg = MagicMock()
+            mock_rg.is_kill_switch_active.return_value = False
+            mock_rg.is_blocked.return_value = False
+            mock_rg.is_stop_loss_triggered.return_value = False
+            mock_rg.is_circuit_breaker_open.side_effect = cb_open_side_effect
+            mock_rg.circuit_breaker_errors = 5       # static configured threshold
+            mock_rg.last_trip_error_count = 7        # live burst count (differs from threshold)
+            mock_rg.cb_cooldown_remaining.return_value = 300.0
+            mock_rg_cls.return_value = mock_rg
+            from bot import live_run
+            await live_run.run(config, client, duration_hours=0.00001, db_path=db_path)
+
+        await asyncio.sleep(0)
+        # Must pass live count (7), NOT static threshold (5)
+        alerter_mock.send_circuit_breaker_trip.assert_awaited_once_with(
+            error_count=7,
+            cooldown_seconds=300.0,
+        )

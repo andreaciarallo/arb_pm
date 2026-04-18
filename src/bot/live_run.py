@@ -396,7 +396,7 @@ async def run(
             # Circuit breaker trip detection: fire alert only on closed -> open transition (D-03)
             if not was_cb_open and risk_gate.is_circuit_breaker_open():
                 asyncio.create_task(alerter.send_circuit_breaker_trip(
-                    error_count=risk_gate.circuit_breaker_errors,
+                    error_count=risk_gate.last_trip_error_count,
                     cooldown_seconds=risk_gate.cb_cooldown_remaining(),
                 ))
 
