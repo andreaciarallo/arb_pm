@@ -115,7 +115,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01-PLAN.md — Wire kill switch + CB trip alert call sites in live_run.py + unit tests (OBS-02)
+- [x] 06-01-PLAN.md — Wire kill switch + CB trip alert call sites in live_run.py + unit tests (OBS-02)
 
 ---
 

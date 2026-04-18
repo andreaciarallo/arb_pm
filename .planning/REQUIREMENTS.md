@@ -95,7 +95,7 @@
 | RISK-03 | Phase 3 | Complete |
 | RISK-04 | Phase 3 | Complete |
 | OBS-01 | Phase 4 | Complete |
-| OBS-02 | Phase 6 (gap closure) | Pending |
+| OBS-02 | Phase 6 (gap closure) | Complete |
 | OBS-03 | Phase 4 | Complete |
 | OBS-04 | Phase 4 | Complete |
 
