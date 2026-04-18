@@ -14,6 +14,8 @@
 - [x] **Phase 4: Observability & Monitoring** — Trade logging, alerts, live dashboard (completed 2026-04-15)
 - [ ] **Phase 5: Fix Token ID Execution Wiring** — Wire yes_token_id/no_token_id through ArbitrageOpportunity to unblock live trade execution (gap closure)
 - [ ] **Phase 6: Wire Critical Telegram Alerts** — Wire kill switch and circuit breaker trip Telegram notifications (gap closure)
+- [ ] **Phase 7: Formal Verification — Phase 04 & 06** — Create VERIFICATION.md for Phase 04 (OBS-01, OBS-03, OBS-04) and Phase 06 (OBS-02); fix stale traceability entries (gap closure)
+- [ ] **Phase 8: Fix Circuit Breaker & Alert Accuracy** — Fix NO-leg CB trip wiring (RISK-03) and CB alert live count bug (OBS-02) (gap closure)
 
 ---
 
@@ -117,6 +119,29 @@ Plans:
 Plans:
 - [x] 06-01-PLAN.md — Wire kill switch + CB trip alert call sites in live_run.py + unit tests (OBS-02)
 
+### Phase 7: Formal Verification — Phase 04 & 06
+**Goal**: Formally verify Phase 04 observability implementations and Phase 06 alert wiring to satisfy OBS-01, OBS-03, OBS-04; fix stale traceability entries
+**Depends on**: Phase 6
+**Requirements**: OBS-01, OBS-03, OBS-04, OBS-02 (Phase 06 verification portion)
+**Gap Closure**: Closes OBS-01, OBS-03, OBS-04 requirement gaps from v1.0 audit (Phase 04 missing VERIFICATION.md); closes Phase 06 VERIFICATION.md gap
+**Success Criteria** (what must be TRUE):
+  1. Phase 04 VERIFICATION.md exists and confirms OBS-01 (trade logging to SQLite), OBS-03 (FastAPI dashboard port 8080), OBS-04 (arb_pairs table + insert_arb_pair) satisfied via static code verification
+  2. Phase 06 VERIFICATION.md exists and confirms kill switch + CB trip alert call sites wired (OBS-02 Phase 06 portion)
+  3. REQUIREMENTS.md traceability corrected: DATA-04, EXEC-01–04, RISK-01 status updated from Pending to Complete
+**Plans**: TBD
+
+### Phase 8: Fix Circuit Breaker & Alert Accuracy
+**Goal**: Fix two integration bugs leaving RISK-03 and OBS-02 partially broken in production
+**Depends on**: Phase 7
+**Requirements**: RISK-03, OBS-02
+**Gap Closure**: Closes RISK-03 integration gap (NO-leg failures don't trip CB) and OBS-02 accuracy gap (CB alert shows static threshold not live count) from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. `engine.py` calls `risk_gate.record_order_error()` after the NO-leg retry loop exits with `not no_filled` (approx lines 369–415)
+  2. `gate.py` captures the triggering error count before clearing `_error_timestamps` and exposes it as a property
+  3. `live_run.py` passes the live triggering count (not static configured threshold) to `alerter.send_circuit_breaker_trip()`
+  4. Unit tests confirm both fixes: NO-leg exhaustion trips CB; CB alert message shows live count
+**Plans**: TBD
+
 ---
 
 ## Progress
@@ -129,6 +154,8 @@ Plans:
 | 4. Observability & Monitoring | 4/4 | Complete   | 2026-04-15 |
 | 5. Fix Token ID Execution Wiring | 0/2 | Pending | — |
 | 6. Wire Critical Telegram Alerts | 0/1 | Pending | — |
+| 7. Formal Verification — Phase 04 & 06 | 0/TBD | Pending | — |
+| 8. Fix Circuit Breaker & Alert Accuracy | 0/TBD | Pending | — |
 
 ---
 
