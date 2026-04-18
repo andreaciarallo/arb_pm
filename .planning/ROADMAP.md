@@ -12,6 +12,8 @@
 - [x] **Phase 2: Market Data & Detection** — Real-time scanning, YES+NO arbitrage detection, dry-run mode (completed 2026-03-28)
 - [x] **Phase 3: Execution & Risk Controls** — Automated trade execution with circuit breakers and position limits (completed 2026-03-29)
 - [x] **Phase 4: Observability & Monitoring** — Trade logging, alerts, live dashboard (completed 2026-04-15)
+- [ ] **Phase 5: Fix Token ID Execution Wiring** — Wire yes_token_id/no_token_id through ArbitrageOpportunity to unblock live trade execution (gap closure)
+- [ ] **Phase 6: Wire Critical Telegram Alerts** — Wire kill switch and circuit breaker trip Telegram notifications (gap closure)
 
 ---
 
@@ -85,6 +87,29 @@ Plans:
 - [x] 04-03-PLAN.md — TelegramAlerter: fire-and-forget notifications module (OBS-02)
 - [x] 04-04-PLAN.md — Dashboard + integration: FastAPI app + live_run.py wiring + engine.py arb_id + docker-compose port 8080 (OBS-01, OBS-02, OBS-03, OBS-04)
 
+### Phase 5: Fix Token ID Execution Wiring
+**Goal**: Live trade execution actually fires — ArbitrageOpportunity carries token IDs through to engine.py so Gate 0 no longer blocks every opportunity
+**Depends on**: Phase 4
+**Requirements**: EXEC-01, EXEC-02, EXEC-03, EXEC-04, RISK-01
+**Gap Closure**: Closes TOKEN-ID-GAP integration gap and "Trade Execution" E2E flow from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. `ArbitrageOpportunity` dataclass has `yes_token_id` and `no_token_id` fields
+  2. `yes_no_arb.py` and `cross_market.py` populate both fields (no longer discarded as local vars)
+  3. `engine.py` Gate 0 reads token IDs from `opp` and no longer returns `status='skipped'` for valid opportunities
+  4. At least one simulated FAK order call is reached in a live-mode dry run (verified via logs)
+**Plans**: TBD
+
+### Phase 6: Wire Critical Telegram Alerts
+**Goal**: User receives Telegram notifications for kill switch and circuit breaker trip events
+**Depends on**: Phase 5
+**Requirements**: OBS-02
+**Gap Closure**: Closes TELEGRAM-PARTIAL integration gap and "Kill Switch Telegram Alert" E2E flow from v1.0 audit
+**Success Criteria** (what must be TRUE):
+  1. `_execute_kill_switch()` in `live_run.py` calls `alerter.send_kill_switch()` via `asyncio.create_task()`
+  2. Circuit breaker trip event in scan loop calls `alerter.send_circuit_breaker_trip()` via `asyncio.create_task()`
+  3. Both alert methods have verified call sites (grep confirms ≥1 call site each)
+**Plans**: TBD
+
 ---
 
 ## Progress
@@ -95,6 +120,8 @@ Plans:
 | 2. Market Data & Detection | 6/6 | Complete   | 2026-03-28 |
 | 3. Execution & Risk Controls | 5/5 | Complete   | 2026-03-29 |
 | 4. Observability & Monitoring | 4/4 | Complete   | 2026-04-15 |
+| 5. Fix Token ID Execution Wiring | 0/TBD | Pending | — |
+| 6. Wire Critical Telegram Alerts | 0/TBD | Pending | — |
 
 ---
 

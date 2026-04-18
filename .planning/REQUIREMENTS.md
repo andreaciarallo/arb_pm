@@ -86,18 +86,18 @@
 | DATA-04 | Phase 2 | Pending |
 | DATA-05 | Phase 2 | Complete |
 | DATA-06 | Phase 2 | Complete |
-| EXEC-01 | Phase 3 | Complete |
-| EXEC-02 | Phase 3 | Complete |
-| EXEC-03 | Phase 3 | Complete |
-| EXEC-04 | Phase 3 | Complete |
-| RISK-01 | Phase 3 | Complete |
+| EXEC-01 | Phase 5 (gap closure) | Pending |
+| EXEC-02 | Phase 5 (gap closure) | Pending |
+| EXEC-03 | Phase 5 (gap closure) | Pending |
+| EXEC-04 | Phase 5 (gap closure) | Pending |
+| RISK-01 | Phase 5 (gap closure) | Pending |
 | RISK-02 | Phase 3 | Complete |
 | RISK-03 | Phase 3 | Complete |
 | RISK-04 | Phase 3 | Complete |
-| OBS-01 | Phase 4 | Pending |
-| OBS-02 | Phase 4 | Pending |
-| OBS-03 | Phase 4 | Pending |
-| OBS-04 | Phase 4 | Pending |
+| OBS-01 | Phase 4 | Complete |
+| OBS-02 | Phase 6 (gap closure) | Pending |
+| OBS-03 | Phase 4 | Complete |
+| OBS-04 | Phase 4 | Complete |
 
 **Total v1 Requirements:** 23
 **Coverage:** 23/23 mapped
