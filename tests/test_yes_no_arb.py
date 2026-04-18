@@ -137,3 +137,25 @@ def test_geopolitics_lower_threshold():
     assert len(opps) == 1
     assert opps[0].category == "geopolitics"
     assert opps[0].estimated_fees == pytest.approx(0.0)  # fee-free
+
+
+def test_token_ids_populated():
+    """yes_token_id and no_token_id are populated on returned ArbitrageOpportunity (EXEC-01)."""
+    from bot.detection.yes_no_arb import detect_yes_no_opportunities
+
+    market = _make_market(yes_tok="yes_token_abc", no_tok="no_token_xyz", tags=["politics"])
+    cache = _make_cache("yes_token_abc", "no_token_xyz", yes_ask=0.40, no_ask=0.40)
+    config = _make_config()
+
+    opps = detect_yes_no_opportunities([market], cache, config)
+
+    assert len(opps) == 1
+    opp = opps[0]
+    assert opp.yes_token_id == "yes_token_abc", (
+        f"expected yes_token_id='yes_token_abc', got '{opp.yes_token_id}'"
+    )
+    assert opp.no_token_id == "no_token_xyz", (
+        f"expected no_token_id='no_token_xyz', got '{opp.no_token_id}'"
+    )
+    assert opp.yes_token_id != "", "yes_token_id must not be empty"
+    assert opp.no_token_id != "", "no_token_id must not be empty"
