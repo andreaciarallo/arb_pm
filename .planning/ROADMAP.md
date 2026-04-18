@@ -100,8 +100,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — ArbitrageOpportunity dataclass extension + yes_no_arb.py + cross_market.py wiring + token ID test (EXEC-01)
-- [ ] 05-02-PLAN.md — engine.py Gate 0/Gate 1 upgrade + test_execution_engine.py updates (EXEC-01, EXEC-02, EXEC-03, EXEC-04, RISK-01)
+- [x] 05-01-PLAN.md — ArbitrageOpportunity dataclass extension + yes_no_arb.py + cross_market.py wiring + token ID test (EXEC-01)
+- [x] 05-02-PLAN.md — engine.py Gate 0/Gate 1 upgrade + test_execution_engine.py updates (EXEC-01, EXEC-02, EXEC-03, EXEC-04, RISK-01)
 
 ### Phase 6: Wire Critical Telegram Alerts
 **Goal**: User receives Telegram notifications for kill switch and circuit breaker trip events
