@@ -112,7 +112,10 @@ Plans:
   1. `_execute_kill_switch()` in `live_run.py` calls `alerter.send_kill_switch()` via `asyncio.create_task()`
   2. Circuit breaker trip event in scan loop calls `alerter.send_circuit_breaker_trip()` via `asyncio.create_task()`
   3. Both alert methods have verified call sites (grep confirms ≥1 call site each)
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 06-01-PLAN.md — Wire kill switch + CB trip alert call sites in live_run.py + unit tests (OBS-02)
 
 ---
 
@@ -125,7 +128,7 @@ Plans:
 | 3. Execution & Risk Controls | 5/5 | Complete   | 2026-03-29 |
 | 4. Observability & Monitoring | 4/4 | Complete   | 2026-04-15 |
 | 5. Fix Token ID Execution Wiring | 0/2 | Pending | — |
-| 6. Wire Critical Telegram Alerts | 0/TBD | Pending | — |
+| 6. Wire Critical Telegram Alerts | 0/1 | Pending | — |
 
 ---
 
