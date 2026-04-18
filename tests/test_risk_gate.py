@@ -132,3 +132,27 @@ def test_kill_switch_overrides_expired_circuit_breaker():
     g._cb_cooldown_until = time.time() - 1  # CB expired
     g.activate_kill_switch()
     assert g.is_blocked() is True  # kill switch keeps blocked
+
+
+# OBS-02: last_trip_error_count property — captures live burst count before clear
+def test_last_trip_error_count_zero_before_any_trip():
+    """last_trip_error_count returns 0 when no CB trip has occurred."""
+    g = _gate(cb_errors=3)
+    assert g.last_trip_error_count == 0
+
+
+def test_last_trip_error_count_reflects_triggering_count():
+    """last_trip_error_count returns the count that triggered the trip, not the threshold."""
+    g = _gate(cb_errors=3)
+    for _ in range(3):
+        g.record_order_error()
+    # After trip: must equal 3 (the live count), not 0 (post-clear)
+    assert g.last_trip_error_count == 3
+
+
+def test_last_trip_error_count_with_excess_errors():
+    """If CB trips at exactly threshold, count equals threshold (not a higher number)."""
+    g = _gate(cb_errors=5)
+    for _ in range(5):
+        g.record_order_error()
+    assert g.last_trip_error_count == 5

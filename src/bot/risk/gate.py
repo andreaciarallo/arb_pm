@@ -77,6 +77,7 @@ class RiskGate:
         self._cb_cooldown_until: float = 0.0
         self._cb_cooldown_multiplier: int = 1   # doubles on each trip, caps at 4 (→ 20m max)
         self._kill_switch_active: bool = False
+        self._last_trip_count: int = 0
 
     # ------------------------------------------------------------------
     # Mutators — called from execution path
@@ -119,6 +120,7 @@ class RiskGate:
             cooldown = self.circuit_breaker_cooldown_seconds * self._cb_cooldown_multiplier
             self._cb_cooldown_until = now + cooldown
             self._cb_cooldown_multiplier = min(self._cb_cooldown_multiplier * 2, 4)
+            self._last_trip_count = len(self._error_timestamps)  # capture before clear (D-02)
             self._error_timestamps.clear()
             logger.warning(
                 f"Circuit breaker tripped — cooldown {cooldown}s "
@@ -199,6 +201,11 @@ class RiskGate:
     def cb_cooldown_remaining(self) -> float:
         """Seconds remaining on circuit breaker cooldown. Returns 0.0 if not active."""
         return max(0.0, self._cb_cooldown_until - time.time())
+
+    @property
+    def last_trip_error_count(self) -> int:
+        """Error count that triggered the most recent CB trip. 0 if never tripped."""
+        return self._last_trip_count
 
     # ------------------------------------------------------------------
     # Internal helpers
