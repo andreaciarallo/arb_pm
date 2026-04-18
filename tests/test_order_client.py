@@ -103,3 +103,33 @@ async def test_place_fak_order_never_calls_create_and_post_order():
     client = _make_client()
     await place_fak_order(client, "token_yes", 0.41, 10.0, "BUY")
     client.create_and_post_order.assert_not_called()
+
+
+async def test_place_fak_order_converts_usd_to_tokens():
+    """size_usd / price must equal OrderArgs.size (token count, not USD)."""
+    client = _make_client()
+    with patch("bot.execution.order_client.OrderArgs") as mock_order_args:
+        mock_order_args.return_value = MagicMock(name="order_args")
+        await place_fak_order(client, "token_yes", 0.50, 10.0, "BUY")
+    _, kwargs = mock_order_args.call_args
+    assert kwargs["size"] == pytest.approx(20.0)   # 10.0 / 0.50
+
+
+async def test_place_fak_order_converts_usd_to_tokens_partial_price():
+    """size conversion holds at price=0.40 (5.0 / 0.40 = 12.5 tokens)."""
+    client = _make_client()
+    with patch("bot.execution.order_client.OrderArgs") as mock_order_args:
+        mock_order_args.return_value = MagicMock(name="order_args")
+        await place_fak_order(client, "token_no", 0.40, 5.0, "BUY")
+    _, kwargs = mock_order_args.call_args
+    assert kwargs["size"] == pytest.approx(12.5)   # 5.0 / 0.40
+
+
+async def test_place_fak_order_converts_usd_to_tokens_price_one():
+    """At price=1.0, size_tokens == size_usd (identity case)."""
+    client = _make_client()
+    with patch("bot.execution.order_client.OrderArgs") as mock_order_args:
+        mock_order_args.return_value = MagicMock(name="order_args")
+        await place_fak_order(client, "token_yes", 1.0, 5.0, "SELL")
+    _, kwargs = mock_order_args.call_args
+    assert kwargs["size"] == pytest.approx(5.0)    # 5.0 / 1.0

@@ -37,17 +37,22 @@ async def place_fak_order(
         client: Authenticated ClobClient instance (from build_client()).
         token_id: YES or NO conditional token asset ID.
         price: Limit price (e.g., 0.41). Must be valid for market tick_size.
-        size_usd: Order size in USDC.
+        size_usd: Order size in USDC. Converted internally to token count
+                  via size_tokens = size_usd / price before sending to CLOB.
         side: "BUY" or "SELL".
 
     Returns:
         Response dict with "orderID" and "status", or None on any failure.
     """
     loop = asyncio.get_running_loop()
+    # CLOB interprets size as number of outcome tokens, not USDC.
+    # Total USDC spent = size_tokens × price. Convert here so callers
+    # always reason in USD (EXEC-SIZE-001 fix).
+    size_tokens = size_usd / price
     order_args = OrderArgs(
         token_id=token_id,
         price=price,
-        size=size_usd,
+        size=size_tokens,
         side=side,
     )
 
@@ -61,7 +66,8 @@ async def place_fak_order(
         )
         logger.debug(
             f"FAK order submitted | token={token_id} side={side} price={price} "
-            f"size={size_usd} status={response.get('status')} id={response.get('orderID')}"
+            f"size_usd={size_usd} size_tokens={size_tokens:.4f} "
+            f"status={response.get('status')} id={response.get('orderID')}"
         )
         return response
     except PolyApiException as exc:
