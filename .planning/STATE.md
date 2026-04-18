@@ -138,6 +138,12 @@ Plan: 1 of 5
 |---------|--------|------------|
 | None | - | - |
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260418-i2n | Fix EXEC-SIZE-001: correct place_fak_order size parameter from USD amount to token count | 2026-04-18 | 7bfbd9f | [260418-i2n-fix-exec-size-001-correct-place-fak-orde](.planning/quick/260418-i2n-fix-exec-size-001-correct-place-fak-orde/) |
+
 ### Notes
 
 - Infrastructure is the differentiator — latency and connectivity matter more than strategy sophistication
@@ -162,3 +168,4 @@ Plan: 1 of 5
 | 2026-03-27 | Project Initialized | GSD workflow initialized with PROJECT.md |
 | 2026-03-27 | Requirements Created | 23 v1 requirements across 4 categories |
 | 2026-03-27 | Roadmap Created | 4 phases derived from requirements |
+| 2026-04-18 | Quick Task 260418-i2n | Fixed EXEC-SIZE-001: place_fak_order now converts size_usd to token count |
