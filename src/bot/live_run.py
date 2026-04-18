@@ -228,8 +228,10 @@ async def run(
     # Register SIGTERM and SIGINT to activate kill switch immediately
     loop = asyncio.get_running_loop()
     _stop_event = asyncio.Event()
+    _kill_trigger_ref = ["unknown"]  # mutable container for nested-function mutation (D-02)
 
     def _handle_signal():
+        _kill_trigger_ref[0] = "SIGTERM"
         logger.warning("Shutdown signal received — activating kill switch")
         risk_gate.activate_kill_switch()
         _stop_event.set()  # interrupt any in-progress sleep immediately
@@ -262,10 +264,12 @@ async def run(
             # KILL file check (max 30s detection lag per D-08)
             if os.path.exists(_KILL_FILE):
                 logger.warning(f"KILL file detected at {_KILL_FILE} — activating kill switch")
+                _kill_trigger_ref[0] = "KILL file"
                 risk_gate.activate_kill_switch()
 
             # Kill switch takes absolute priority — execute active close and exit loop
             if risk_gate.is_kill_switch_active():
+                asyncio.create_task(alerter.send_kill_switch(trigger=_kill_trigger_ref[0]))
                 await _execute_kill_switch(client, conn, writer)
                 break
 
@@ -290,6 +294,8 @@ async def run(
             # Cap cross-market scan at 100 priced markets to prevent O(n²) blowup
             cross_opps = detect_cross_market_opportunities(priced_markets[:100], cache, config)
             all_opps = yes_no_opps + cross_opps
+
+            was_cb_open = risk_gate.is_circuit_breaker_open()  # snapshot for CB trip detection (D-03)
 
             # Execute on all opportunities — gated by risk controls
             if not risk_gate.is_blocked():
@@ -386,6 +392,13 @@ async def run(
                 logger.warning("Stop-loss active — skipping execution this cycle")
             elif risk_gate.is_circuit_breaker_open():
                 logger.warning("Circuit breaker open — skipping execution this cycle")
+
+            # Circuit breaker trip detection: fire alert only on closed -> open transition (D-03)
+            if not was_cb_open and risk_gate.is_circuit_breaker_open():
+                asyncio.create_task(alerter.send_circuit_breaker_trip(
+                    error_count=risk_gate.circuit_breaker_errors,
+                    cooldown_seconds=risk_gate.cb_cooldown_remaining(),
+                ))
 
             # Enqueue to SQLite opportunities writer (non-blocking)
             for opp in all_opps:
