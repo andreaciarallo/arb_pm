@@ -293,3 +293,67 @@ async def test_vwap_gate_insufficient_depth_skips(mock_kelly):
         opp = _opp(net_spread=0.03)
         _, results = await execute_opportunity(client, opp, _config(), MagicMock())
         assert any(r.status == "skipped" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# Test 9: NO exhaustion calls record_order_error() (RISK-03)
+# ---------------------------------------------------------------------------
+
+@patch("bot.execution.engine.kelly_size", return_value=10.0)
+@patch("bot.execution.engine.verify_fill_rest", new_callable=AsyncMock, return_value=True)
+async def test_no_exhaustion_calls_record_order_error(mock_verify, mock_kelly):
+    """YES fills; all 3 NO retries fail → record_order_error() called once (RISK-03)."""
+    call_counter = {"n": 0}
+
+    async def side_effect(*args, **kwargs):
+        call_counter["n"] += 1
+        if call_counter["n"] == 1:
+            return {"orderID": "yes1", "status": "matched"}
+        side_arg = kwargs.get("side") or (args[4] if len(args) > 4 else None)
+        if side_arg == "SELL":
+            return {"orderID": "hedge1", "status": "matched"}
+        return None  # NO BUY attempts all fail
+
+    with patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock,
+               side_effect=side_effect):
+        client = MagicMock()
+        mock_book = MagicMock()
+        level = MagicMock()
+        level.price = "0.48"
+        level.size = "500"
+        mock_book.asks = [level]
+        mock_book.bids = []
+        client.get_order_book.return_value = mock_book
+        risk_gate = MagicMock()
+        risk_gate.is_kill_switch_active.return_value = False
+        _, results = await execute_opportunity(client, _opp(), _config(), risk_gate)
+        # NO leg exhausted → record_order_error() must have been called exactly once
+        risk_gate.record_order_error.assert_called_once()
+        # Hedge SELL must still have been triggered
+        assert any(r.leg == "hedge" for r in results)
+
+
+# ---------------------------------------------------------------------------
+# Test 10: YES verify failure still calls record_order_error() (RISK-03 regression)
+# ---------------------------------------------------------------------------
+
+@patch("bot.execution.engine.kelly_size", return_value=10.0)
+@patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock,
+       return_value={"orderID": "yes1", "status": "matched"})
+@patch("bot.execution.engine.verify_fill_rest", new_callable=AsyncMock, return_value=False)
+async def test_yes_verify_failure_calls_record_order_error(mock_verify, mock_place, mock_kelly):
+    """YES verify returns False → record_order_error() still called (regression guard)."""
+    client = MagicMock()
+    mock_book = MagicMock()
+    level = MagicMock()
+    level.price = "0.48"
+    level.size = "500"
+    mock_book.asks = [level]
+    mock_book.bids = []
+    client.get_order_book.return_value = mock_book
+    risk_gate = MagicMock()
+    _, results = await execute_opportunity(client, _opp(), _config(), risk_gate)
+    # YES verify failed → record_order_error() must still be called at line 327
+    risk_gate.record_order_error.assert_called_once()
+    # No NO leg attempted
+    assert not any(r.leg == "no" for r in results)
