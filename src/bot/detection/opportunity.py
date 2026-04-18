@@ -24,3 +24,5 @@ class ArbitrageOpportunity:
     vwap_no: float              # VWAP ask for NO
     confidence_score: float     # 0.0-1.0 quality proxy
     detected_at: datetime
+    yes_token_id: str = ""   # Conditional token ID for YES side — populated by detection engines
+    no_token_id: str = ""    # Conditional token ID for NO side — "" for cross_market opps (D-01)

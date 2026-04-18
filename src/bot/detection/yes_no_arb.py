@@ -127,6 +127,8 @@ def detect_yes_no_opportunities(
             vwap_no=no_ask,
             confidence_score=round(confidence, 4),
             detected_at=datetime.utcnow(),
+            yes_token_id=yes_token_id,
+            no_token_id=no_token_id,
         )
         opportunities.append(opportunity)
 

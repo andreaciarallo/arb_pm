@@ -111,6 +111,13 @@ def detect_cross_market_opportunities(
         depths: list[float] = []
         categories: list[str] = []
 
+        # Capture group[0]'s YES token ID before the loop overwrites yes_token_id (D-01)
+        first_market_tokens = group[0].get("tokens", [])
+        group0_yes_token_id = next(
+            (t["token_id"] for t in first_market_tokens if t.get("outcome", "").lower() == "yes"),
+            ""
+        )
+
         all_prices_available = True
         for market in group:
             tokens = market.get("tokens", [])
@@ -183,6 +190,8 @@ def detect_cross_market_opportunities(
             vwap_no=0.0,
             confidence_score=round(confidence, 4),
             detected_at=datetime.utcnow(),
+            yes_token_id=group0_yes_token_id,
+            no_token_id="",   # D-01: cross-market has no NO token; Gate 0 will skip these opps
         )
         opportunities.append(opp)
 
