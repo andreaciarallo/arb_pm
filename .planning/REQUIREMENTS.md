@@ -94,10 +94,10 @@
 | RISK-02 | Phase 3 | Complete |
 | RISK-03 | Phase 3 + Phase 8 (gap closure) | Pending |
 | RISK-04 | Phase 3 | Complete |
-| OBS-01 | Phase 7 (gap closure) | Pending |
+| OBS-01 | Phase 7 (gap closure) | Complete |
 | OBS-02 | Phase 6 + Phase 8 (gap closure) | Pending |
-| OBS-03 | Phase 7 (gap closure) | Pending |
-| OBS-04 | Phase 7 (gap closure) | Pending |
+| OBS-03 | Phase 7 (gap closure) | Complete |
+| OBS-04 | Phase 7 (gap closure) | Complete |
 
 **Total v1 Requirements:** 23
 **Coverage:** 23/23 mapped
