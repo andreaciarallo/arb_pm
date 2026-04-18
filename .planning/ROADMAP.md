@@ -97,7 +97,11 @@ Plans:
   2. `yes_no_arb.py` and `cross_market.py` populate both fields (no longer discarded as local vars)
   3. `engine.py` Gate 0 reads token IDs from `opp` and no longer returns `status='skipped'` for valid opportunities
   4. At least one simulated FAK order call is reached in a live-mode dry run (verified via logs)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — ArbitrageOpportunity dataclass extension + yes_no_arb.py + cross_market.py wiring + token ID test (EXEC-01)
+- [ ] 05-02-PLAN.md — engine.py Gate 0/Gate 1 upgrade + test_execution_engine.py updates (EXEC-01, EXEC-02, EXEC-03, EXEC-04, RISK-01)
 
 ### Phase 6: Wire Critical Telegram Alerts
 **Goal**: User receives Telegram notifications for kill switch and circuit breaker trip events
@@ -120,7 +124,7 @@ Plans:
 | 2. Market Data & Detection | 6/6 | Complete   | 2026-03-28 |
 | 3. Execution & Risk Controls | 5/5 | Complete   | 2026-03-29 |
 | 4. Observability & Monitoring | 4/4 | Complete   | 2026-04-15 |
-| 5. Fix Token ID Execution Wiring | 0/TBD | Pending | — |
+| 5. Fix Token ID Execution Wiring | 0/2 | Pending | — |
 | 6. Wire Critical Telegram Alerts | 0/TBD | Pending | — |
 
 ---
