@@ -20,9 +20,14 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 - [x] Provide local dashboard with live metrics — Validated in Phase 4
 - [x] Deploy to cloud VPS for continuous operation — Validated in Phases 1 + VPS migration
 
+### Validated
+
+- [x] Send alerts via Telegram/Discord (kill switch + circuit breaker wiring) — Validated in Phase 6 (OBS-02 Phase 6 portion); OBS-01, OBS-03, OBS-04 traceability confirmed in Phase 7
+
 ### Active
 
-- [ ] Send alerts via Telegram/Discord — Phase 6 (kill switch + circuit breaker wiring)
+- [ ] CB alert accuracy fix (OBS-02 Phase 8 portion): show live triggering error count, not static threshold — Phase 8
+- [ ] Fix NO-leg circuit breaker (RISK-03): engine.py failures not tripping CB — Phase 8
 - [ ] Track comprehensive metrics: PnL, per-arb analytics, execution costs, capital efficiency
 
 ### Out of Scope
@@ -81,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after project initialization*
+*Last updated: 2026-04-18 after Phase 7 completion (OBS-01, OBS-03, OBS-04 traceability confirmed)*
