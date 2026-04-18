@@ -30,6 +30,8 @@ def _opp(
     depth=200.0,
     vwap_yes=0.48,
     vwap_no=0.48,
+    yes_token_id="yes_tok",
+    no_token_id="no_tok",
 ):
     return ArbitrageOpportunity(
         market_id="cond_abc",
@@ -46,6 +48,8 @@ def _opp(
         vwap_no=vwap_no,
         confidence_score=0.8,
         detected_at=datetime.utcnow(),
+        yes_token_id=yes_token_id,
+        no_token_id=no_token_id,
     )
 
 
@@ -71,8 +75,15 @@ def _config(
 async def test_vwap_gate_low_spread_skips(mock_kelly):
     """VWAP-adjusted spread below min_net_profit_pct → status='skipped'."""
     client = MagicMock()
-    # vwap_yes=0.50, vwap_no=0.50 → vwap_spread = 1.0 - 0.50 - 0.50 = 0.0 < 0.015
-    opp = _opp(vwap_yes=0.50, vwap_no=0.50, net_spread=0.03)
+    # price=0.50 each side → vwap_spread = 1.0 - 0.50 - 0.50 = 0.0 < 0.015 → skipped
+    mock_book = MagicMock()
+    level = MagicMock()
+    level.price = "0.50"
+    level.size = "500"
+    mock_book.asks = [level]
+    mock_book.bids = []
+    client.get_order_book.return_value = mock_book
+    opp = _opp(net_spread=0.03)
     _, results = await execute_opportunity(client, opp, _config(), MagicMock())
     assert any(r.status == "skipped" for r in results)
 
@@ -85,6 +96,13 @@ async def test_vwap_gate_low_spread_skips(mock_kelly):
 async def test_kelly_zero_returns_skipped(mock_kelly):
     """kelly_size returns 0.0 → status='skipped', no order placed."""
     client = MagicMock()
+    mock_book = MagicMock()
+    level = MagicMock()
+    level.price = "0.48"
+    level.size = "500"
+    mock_book.asks = [level]
+    mock_book.bids = []
+    client.get_order_book.return_value = mock_book
     _, results = await execute_opportunity(client, _opp(), _config(), MagicMock())
     assert any(r.status == "skipped" for r in results)
 
@@ -106,11 +124,17 @@ async def test_full_success_returns_two_filled_results(mock_verify, mock_kelly):
     with patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock,
                side_effect=side_effect):
         client = MagicMock()
+        mock_book = MagicMock()
+        level = MagicMock()
+        level.price = "0.48"
+        level.size = "500"
+        mock_book.asks = [level]
+        mock_book.bids = []
+        client.get_order_book.return_value = mock_book
         risk_gate = MagicMock()
         risk_gate.is_kill_switch_active.return_value = False
         _, results = await execute_opportunity(
             client, _opp(), _config(), risk_gate,
-            yes_token_id="yes_tok", no_token_id="no_tok",
         )
         filled = [r for r in results if r.status == "filled"]
         assert len(filled) >= 2
@@ -125,9 +149,15 @@ async def test_full_success_returns_two_filled_results(mock_verify, mock_kelly):
 async def test_yes_leg_fails_no_exposure(mock_place, mock_kelly):
     """place_fak_order returns None for YES → failed result, NO never attempted."""
     client = MagicMock()
+    mock_book = MagicMock()
+    level = MagicMock()
+    level.price = "0.48"
+    level.size = "500"
+    mock_book.asks = [level]
+    mock_book.bids = []
+    client.get_order_book.return_value = mock_book
     _, results = await execute_opportunity(
         client, _opp(), _config(), MagicMock(),
-        yes_token_id="yes_tok", no_token_id="no_tok",
     )
     failed = [r for r in results if r.leg == "yes" and r.status == "failed"]
     assert len(failed) >= 1
@@ -159,11 +189,17 @@ async def test_no_leg_retry_then_hedge(mock_verify, mock_kelly):
     with patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock,
                side_effect=side_effect):
         client = MagicMock()
+        mock_book = MagicMock()
+        level = MagicMock()
+        level.price = "0.48"
+        level.size = "500"
+        mock_book.asks = [level]
+        mock_book.bids = []
+        client.get_order_book.return_value = mock_book
         risk_gate = MagicMock()
         risk_gate.is_kill_switch_active.return_value = False
         _, results = await execute_opportunity(
             client, _opp(), _config(), risk_gate,
-            yes_token_id="yes_tok", no_token_id="no_tok",
         )
         hedge_results = [r for r in results if r.status == "hedged" or r.leg == "hedge"]
         assert len(hedge_results) >= 1
@@ -188,12 +224,18 @@ async def test_kill_switch_stops_no_retries(mock_verify, mock_kelly):
     with patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock,
                side_effect=side_effect_place):
         client = MagicMock()
+        mock_book = MagicMock()
+        level = MagicMock()
+        level.price = "0.48"
+        level.size = "500"
+        mock_book.asks = [level]
+        mock_book.bids = []
+        client.get_order_book.return_value = mock_book
         risk_gate = MagicMock()
         # Kill switch is active from the first check inside the retry loop
         risk_gate.is_kill_switch_active.return_value = True
         _, results = await execute_opportunity(
             client, _opp(), _config(), risk_gate,
-            yes_token_id="yes_tok", no_token_id="no_tok",
         )
         no_attempts = call_counter["n"] - 1  # subtract YES attempt
         # Should not have made 3 full NO retry attempts
@@ -211,9 +253,15 @@ async def test_kill_switch_stops_no_retries(mock_verify, mock_kelly):
 async def test_yes_verify_false_aborts_no_leg(mock_verify, mock_place, mock_kelly):
     """YES response has orderID but verify_fill_rest returns False → NO not attempted."""
     client = MagicMock()
+    mock_book = MagicMock()
+    level = MagicMock()
+    level.price = "0.48"
+    level.size = "500"
+    mock_book.asks = [level]
+    mock_book.bids = []
+    client.get_order_book.return_value = mock_book
     _, results = await execute_opportunity(
         client, _opp(), _config(), MagicMock(),
-        yes_token_id="yes_tok", no_token_id="no_tok",
     )
     # YES was attempted (place called once)
     assert mock_place.call_count == 1
@@ -232,8 +280,16 @@ async def test_vwap_gate_insufficient_depth_skips(mock_kelly):
     """simulate_vwap with empty asks → VWAP=1.0 → vwap_spread < threshold → skipped."""
     with patch("bot.execution.engine.simulate_vwap", return_value=1.0):
         client = MagicMock()
-        # vwap_yes will be overridden by simulate_vwap mock returning 1.0
-        # 1.0 - 1.0 - 1.0 = -1.0 → deeply negative → skipped
-        opp = _opp(vwap_yes=1.0, vwap_no=1.0, net_spread=0.03)
+        # client.get_order_book mock needed so sorted() in Gate 1 doesn't fail
+        # simulate_vwap is patched to return 1.0 regardless of asks content
+        mock_book = MagicMock()
+        level = MagicMock()
+        level.price = "0.48"
+        level.size = "1"
+        mock_book.asks = [level]
+        mock_book.bids = []
+        client.get_order_book.return_value = mock_book
+        # simulate_vwap returns 1.0 → 1.0 - 1.0 - 1.0 = -1.0 → deeply negative → skipped
+        opp = _opp(net_spread=0.03)
         _, results = await execute_opportunity(client, opp, _config(), MagicMock())
         assert any(r.status == "skipped" for r in results)
