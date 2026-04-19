@@ -34,6 +34,10 @@ services:
     volumes:
       - bot_data:/app/data
 
+    # Default: dry-run mode. To run live, override on VPS:
+    #   command: [python, -m, bot.main, --live]
+    command: [python, -m, bot.main]
+
     # Logging: keep last 50MB of logs across 5 rotated files
     logging:
       driver: json-file
