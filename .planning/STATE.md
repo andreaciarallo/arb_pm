@@ -147,6 +147,10 @@ Plan: 2 of 2
 |---|-------------|------|--------|-----------|
 | 260418-i2n | Fix EXEC-SIZE-001: correct place_fak_order size parameter from USD amount to token count | 2026-04-18 | 7bfbd9f | [260418-i2n-fix-exec-size-001-correct-place-fak-orde](.planning/quick/260418-i2n-fix-exec-size-001-correct-place-fak-orde/) |
 
+### Roadmap Evolution
+
+- Phase 1 added: Research Polymarket market mechanics and arb math to fix cross-market false positives (gross < 1.0 passing through, missing token IDs on execution), set dry-run mode, and fix the missing token ID lookup bug in the execution engine
+
 ### Notes
 
 - Infrastructure is the differentiator — latency and connectivity matter more than strategy sophistication

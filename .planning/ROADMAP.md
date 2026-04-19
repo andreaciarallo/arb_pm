@@ -29,6 +29,16 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
+### Phase 1: Research Polymarket market mechanics and arb math to fix cross-market false positives (gross < 1.0 passing through, missing token IDs on execution), set dry-run mode, and fix the missing token ID lookup bug in the execution engine
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 0
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 1 to break down)
+
 ---
 
 ## Progress
