@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-04-19T13:38:58.044Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-04-19T18:00:23.769Z"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -41,7 +41,7 @@ Plan: 2 of 2
 
 **Progress:**
 
-[██████████] 100%
+[███████░░░] 67%
 
 **Active Branch:** None
 
@@ -69,6 +69,7 @@ Plan: 2 of 2
 | Phase 03 P03 | 4 | 2 tasks | 2 files |
 | Phase 03 P04 | 152 | 2 tasks | 3 files |
 | Phase 03 P05 | 6 | 3 tasks | 4 files |
+| Phase 01 P03 | 918 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,9 @@ Plan: 2 of 2
 - [Phase 01-02]: PATH B chosen for cross-market grouping — CLOB has no event_id field; Gamma API (conditionId->event_id) is primary source; neg_risk_market_id retained as fallback
 - [Phase 01-02]: load_event_groups() called once at scanner startup (not in hot detection path); _event_groups is a module-level cache dict
 - [Phase 01-02]: _group_by_event() replaces _group_markets() and _extract_keywords() — keyword BFS heuristic fully removed
+- [Phase 01]: Equal shares not equal dollars for cross-market sizing: target_shares = kelly_usd / total_yes
+- [Phase 01]: Partial hedge sells ALL previously filled legs at price=0.01 on any leg failure
+- [Phase 01]: Gate 0 dual-routing requires both opportunity_type==cross_market AND legs populated to prevent YES+NO bypass
 
 ### Open Questions
 
@@ -165,8 +169,8 @@ Plan: 2 of 2
 
 ## Session Continuity
 
-**Last Session:** 2026-04-19T17:51:13Z
-**Stopped At:** Completed 01-02-PLAN.md (event-level grouping rewrite)
+**Last Session:** 2026-04-19T18:00:08.514Z
+**Stopped At:** Completed 01-03-PLAN.md
 **Next Session:** Continue Phase 01 — execute 01-03-PLAN.md
 
 ---

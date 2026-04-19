@@ -38,8 +38,8 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 Plans:
 - [ ] 01-01-PLAN.md — Switch VPS to dry-run and lock via docker-compose.yml command: override
-- [ ] 01-02-PLAN.md — Replace keyword BFS with neg_risk_market_id grouping in cross_market.py
-- [ ] 01-03-PLAN.md — Add legs field to ArbitrageOpportunity and wire cross-market execution in engine.py
+- [x] 01-02-PLAN.md — Replace keyword BFS with neg_risk_market_id grouping in cross_market.py
+- [x] 01-03-PLAN.md — Add legs field to ArbitrageOpportunity and wire cross-market execution in engine.py
 
 ---
 
