@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-04-19T18:00:23.769Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-04-19T18:53:52Z"
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 3
-  completed_plans: 2
-  percent: 67
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -133,6 +133,7 @@ Plan: 2 of 2
 - [Phase 01]: Equal shares not equal dollars for cross-market sizing: target_shares = kelly_usd / total_yes
 - [Phase 01]: Partial hedge sells ALL previously filled legs at price=0.01 on any leg failure
 - [Phase 01]: Gate 0 dual-routing requires both opportunity_type==cross_market AND legs populated to prevent YES+NO bypass
+- [Phase 01-04]: load_event_groups() called once at scanner startup in dry_run.run() and live_run.run(), after fetch_liquid_markets and before WebSocketClient; outer try/except marked pragma: no cover since inner function already swallows all exceptions
 
 ### Open Questions
 
@@ -169,9 +170,9 @@ Plan: 2 of 2
 
 ## Session Continuity
 
-**Last Session:** 2026-04-19T18:00:08.514Z
-**Stopped At:** Completed 01-03-PLAN.md
-**Next Session:** Continue Phase 01 — execute 01-03-PLAN.md
+**Last Session:** 2026-04-19T18:53:52Z
+**Stopped At:** Completed 01-04-PLAN.md
+**Next Session:** Phase 01 complete — all 4 plans done
 
 ---
 
