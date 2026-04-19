@@ -20,6 +20,80 @@ The bot has been running in `--live` mode for ~10 hours across 580 cycles and lo
 
 ---
 
+## CRITICAL ADDENDUM — NegRisk vs. Arbitrage (2026-04-19, user-verified research)
+
+**NegRisk is NOT arbitrage.** This is the most important strategic distinction in the Polymarket ecosystem.
+
+### NegRisk (sum > 1.0) — Capital Efficiency ONLY
+| Property | Value |
+|----------|-------|
+| Condition | sum(YES_ask_i) > 1.0 |
+| Interface | NegRisk API/contract (separate from standard CLOB) |
+| Cost | Fixed $1.00 collateral (regardless of sum) |
+| Payout | $1.00 (winning leg) |
+| Profit | $0.00 — zero guaranteed profit |
+| Benefit | Saves `sum - 1.0` in locked capital vs standard approach |
+| Use case | Capital efficiency for long-duration positions |
+
+**NEVER use NegRisk for underpriced (sum < 1.0) arbitrage — it eliminates the profit by raising cost to $1.00.**
+
+### True Arbitrage (sum < 1.0) — STANDARD markets ONLY
+| Property | Value |
+|----------|-------|
+| Condition | sum(YES_ask_i) < 1.0 |
+| Interface | STANDARD CLOB — `place_fak_order()` (what our bot uses) |
+| Cost | sum(YES_ask_i) × target_shares < $1.00 |
+| Payout | $1.00 × target_shares (one leg wins) |
+| Profit | GUARANTEED: (1.0 - sum) × target_shares |
+
+### Correct Cross-Market Sizing — Equal Shares (NOT equal dollars)
+
+**Wrong (Plan 01-03 original):** `per_leg_usd = capital × kelly_pct / N`
+
+This allocates equal dollars per leg → unequal token quantities → unequal payouts depending on winner → not guaranteed profit.
+
+**Correct:** Equal SHARES across all legs.
+
+```
+total_yes = sum(ask_i for all legs)
+target_shares = capital_usd × kelly_pct / total_yes
+size_usd_i = ask_i × target_shares   # different dollars per leg
+token_count_i = size_usd_i / ask_i  = target_shares  ← same for all legs
+total_cost = sum(ask_i × target_shares) = target_shares × total_yes = capital_usd × kelly_pct
+payout(any winner) = target_shares × $1.00  ← guaranteed regardless of winner
+profit = target_shares × (1.0 - total_yes)  ← guaranteed
+```
+
+**Concrete example (sum=0.90, capital=$1000, kelly_pct=100%):**
+```
+target_shares = 1000 / 0.90 = 1111 shares
+Leg A (ask=0.40): size_usd = 0.40 × 1111 = $444  → 1111 shares
+Leg B (ask=0.32): size_usd = 0.32 × 1111 = $356  → 1111 shares
+Leg C (ask=0.18): size_usd = 0.18 × 1111 = $200  → 1111 shares
+Total cost: $1000. Any winner pays: 1111 × $1.00 = $1111. Profit: $111 (11.1%).
+```
+
+**With our `place_fak_order(client, token_id, price, size_usd, "BUY")`:**
+The function converts size_usd → token_count = size_usd / price. So to buy `target_shares`:
+```python
+size_usd_i = leg["ask"] * target_shares
+# place_fak_order internally does: token_count = size_usd_i / leg["ask"] = target_shares ✓
+```
+
+### Cross-Market Hedge Logic (partial fill recovery)
+If leg N fails after legs 1..N-1 have already been bought:
+- Sell all previously filled YES tokens at $0.01 (market-aggressive hedge)
+- Same pattern as YES+NO hedge SELL in engine.py
+- Track `filled_legs: list[dict]` as each leg fills; on failure, sell back all filled
+
+### NegRisk for sum > 1.0 — FUTURE SCOPE ONLY
+This is a separate strategy not related to arbitrage. Out of scope for Phase 1. If implemented in future:
+- Uses a different Polymarket interface/contract (not standard CLOB)
+- Only useful for large positions / long holding periods
+- NOT profitable by itself — saves locked capital only
+
+---
+
 ## Polymarket Market Mechanics
 
 ### What is a "market" vs "outcome token" vs "condition"?
