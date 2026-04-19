@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 
 from bot.config import BotConfig
-from bot.detection.cross_market import detect_cross_market_opportunities
+from bot.detection.cross_market import detect_cross_market_opportunities, load_event_groups
 from bot.detection.yes_no_arb import detect_yes_no_opportunities
 from bot.scanner.http_poller import poll_stale_markets
 from bot.scanner.market_filter import fetch_liquid_markets
@@ -61,6 +61,13 @@ async def run(
     cache = PriceCache()
     markets = await fetch_liquid_markets(client, config)
     logger.info(f"Loaded {len(markets)} liquid markets")
+
+    # Load Gamma API event->market mappings once at startup.
+    # Failure is non-fatal: logs a warning and detection falls back to neg_risk_market_id.
+    try:
+        load_event_groups()
+    except Exception as exc:  # pragma: no cover
+        logger.warning(f"load_event_groups startup call failed: {exc}")
 
     # Start WebSocket client as background task
     # Cap at 2000 token IDs — large subscription messages are silently dropped
