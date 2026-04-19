@@ -9,8 +9,8 @@ progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -126,6 +126,9 @@ Plan: 2 of 2
 - [Phase 06]: D-01: Kill switch alert fired at call site (not _execute_kill_switch param) — signature unchanged
 - [Phase 06]: D-02: _kill_trigger_ref=['unknown'] mutable list tracks trigger reason across nested _handle_signal() closure
 - [Phase 06]: D-03: CB snapshot before execution gate; trip alert fires outside is_blocked() block to catch transitions even when execution skipped
+- [Phase 01-02]: PATH B chosen for cross-market grouping — CLOB has no event_id field; Gamma API (conditionId->event_id) is primary source; neg_risk_market_id retained as fallback
+- [Phase 01-02]: load_event_groups() called once at scanner startup (not in hot detection path); _event_groups is a module-level cache dict
+- [Phase 01-02]: _group_by_event() replaces _group_markets() and _extract_keywords() — keyword BFS heuristic fully removed
 
 ### Open Questions
 
@@ -162,9 +165,9 @@ Plan: 2 of 2
 
 ## Session Continuity
 
-**Last Session:** 2026-04-18T17:31:13.528Z
-**Stopped At:** Phase 8 context gathered
-**Next Session:** Phase 2 complete — proceed to Phase 3 (live execution)
+**Last Session:** 2026-04-19T17:51:13Z
+**Stopped At:** Completed 01-02-PLAN.md (event-level grouping rewrite)
+**Next Session:** Continue Phase 01 — execute 01-03-PLAN.md
 
 ---
 
