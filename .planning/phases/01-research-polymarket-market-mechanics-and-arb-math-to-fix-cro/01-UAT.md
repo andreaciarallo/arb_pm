@@ -5,8 +5,9 @@ source:
   - 01-01-SUMMARY.md
   - 01-02-SUMMARY.md
   - 01-03-SUMMARY.md
+  - 01-04-SUMMARY.md
 started: "2026-04-19T18:10:00Z"
-updated: "2026-04-19T18:30:00Z"
+updated: "2026-04-19T19:35:00Z"
 ---
 
 ## Current Test
@@ -34,9 +35,8 @@ result: pass
 expected: |
   load_event_groups() is called at scanner startup. _event_groups has >0 entries after boot.
   Confirmed via: `docker exec arbbot python -c "import bot.detection.cross_market as cm; print(len(cm._event_groups))"` → non-zero.
-result: issue
-reported: "load_event_groups() is NOT wired into dry_run.py or live_run.py. grep confirms it's absent. _event_groups is always empty at runtime. Detection falls back to neg_risk_market_id only — non-NegRisk mutually exclusive events are never grouped. The executor marked caller wiring as out of scope for 01-02 but no subsequent plan wired it."
-severity: major
+result: pass
+notes: "Gap closed by 01-04-PLAN.md (commits 82e4da4 RED, f5bd0fb GREEN). load_event_groups() now imported and called in both dry_run.py (line 68) and live_run.py (line 250) after fetch_liquid_markets, before WebSocketClient. Two new startup wiring tests pass."
 
 ### 5. Full Test Suite Passes
 expected: |
@@ -62,18 +62,19 @@ result: pass
 ## Summary
 
 total: 8
-passed: 7
-issues: 1
+passed: 8
+issues: 0
 pending: 0
 skipped: 0
 
 ## Gaps
 
 - truth: "load_event_groups() is called at scanner startup so _event_groups is populated with Gamma API event mappings before the first detection cycle"
-  status: failed
+  status: resolved
   reason: "User reported: load_event_groups() not wired into dry_run.py or live_run.py — grep finds zero calls. _event_groups is always {} at runtime. Non-NegRisk mutually exclusive events are never grouped."
   severity: major
   test: 4
+  root_cause: "load_event_groups() was defined in cross_market.py but never imported or called from the runner entrypoints"
   artifacts:
     - src/bot/dry_run.py
     - src/bot/live_run.py
@@ -81,3 +82,4 @@ skipped: 0
   missing:
     - "Call to load_event_groups() in dry_run.py scanner startup (before first detection cycle)"
     - "Call to load_event_groups() in live_run.py scanner startup (before first detection cycle)"
+  resolution: "Fixed by 01-04-PLAN.md (commits 82e4da4 RED + f5bd0fb GREEN). load_event_groups() now called in both runners after fetch_liquid_markets, before WebSocketClient."
