@@ -372,3 +372,32 @@ async def test_cb_alert_shows_live_count_not_static_threshold():
             error_count=7,
             cooldown_seconds=300.0,
         )
+
+
+@pytest.mark.asyncio
+async def test_load_event_groups_called_at_startup():
+    """live_run.run() calls load_event_groups() once before the scan loop."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = os.path.join(tmpdir, "test.db")
+        kill_file = os.path.join(tmpdir, "KILL")
+        open(kill_file, "w").close()  # exit after first cycle via kill switch
+
+        config = _test_config()
+        client = MagicMock()
+        client.cancel_all.return_value = None
+
+        with patch("bot.live_run._KILL_FILE", kill_file), \
+             patch("bot.live_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]), \
+             patch("bot.live_run.WebSocketClient") as mock_ws, \
+             patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
+             patch("bot.live_run.detect_yes_no_opportunities", return_value=[]), \
+             patch("bot.live_run.detect_cross_market_opportunities", return_value=[]), \
+             patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
+             patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
+             patch("bot.live_run.load_event_groups") as mock_leg:
+
+            mock_ws.return_value.run = AsyncMock()
+            from bot import live_run
+            await live_run.run(config, client, duration_hours=0.001, db_path=db_path)
+
+        mock_leg.assert_called_once()

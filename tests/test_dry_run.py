@@ -100,3 +100,36 @@ async def test_opportunities_enqueued_to_writer():
     assert mock_writer.enqueue.called
     enqueued = mock_writer.enqueue.call_args[0][0]
     assert enqueued.market_id == "0xabc"
+
+
+@pytest.mark.asyncio
+async def test_load_event_groups_called_at_startup():
+    """dry_run.run() calls load_event_groups() once before the scan loop."""
+    from bot import dry_run
+
+    config = _make_config()
+    mock_client = MagicMock()
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+
+    try:
+        with patch("bot.dry_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]), \
+             patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
+             patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
+             patch("bot.dry_run.detect_yes_no_opportunities", return_value=[]), \
+             patch("bot.dry_run.detect_cross_market_opportunities", return_value=[]), \
+             patch("bot.dry_run.load_event_groups") as mock_leg:
+
+            mock_ws = MagicMock()
+            mock_ws.run = AsyncMock()
+            mock_ws_cls.return_value = mock_ws
+
+            await asyncio.wait_for(
+                dry_run.run(config, mock_client, duration_hours=0.0001, db_path=db_path),
+                timeout=2.0
+            )
+
+        mock_leg.assert_called_once()
+    finally:
+        os.unlink(db_path)
