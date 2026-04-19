@@ -4,7 +4,7 @@ ArbitrageOpportunity dataclass.
 Represents a detected arbitrage opportunity before execution.
 Structured for direct insertion into the SQLite opportunities table.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
@@ -26,3 +26,6 @@ class ArbitrageOpportunity:
     detected_at: datetime
     yes_token_id: str = ""   # Conditional token ID for YES side — populated by detection engines
     no_token_id: str = ""    # Conditional token ID for NO side — "" for cross_market opps (D-01)
+    legs: list = field(default_factory=list)
+    # Cross-market only: list of {"token_id": str, "ask": float, "depth": float}
+    # One entry per YES token in the neg_risk group. Empty for yes_no opportunities.

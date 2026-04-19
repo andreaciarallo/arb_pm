@@ -1,15 +1,23 @@
 """
-Basic cross-market arbitrage detection using keyword grouping.
+Cross-market arbitrage detection using Polymarket event-level grouping.
 
-Groups binary prediction markets by shared question keywords and detects
-when the sum of YES asks across a mutually exclusive group is < $1.00 after fees.
+Groups binary prediction markets by their shared Polymarket event (fetched once
+from the Gamma API at startup) and detects when the sum of YES asks across a
+mutually exclusive group is < $1.00 after fees.
 
-Example: "Will Alice win?" + "Will Bob win?" + "Will Carol win?"
-If one candidate must win, buy all YES tokens if total < $1.00.
+Example: "Will Alice win?" + "Will Bob win?" + "Will Carol win?" all belong to
+the same event. If exactly one candidate must win, buy all YES tokens when
+total < $1.00.
 
-LLM-based market dependency detection is deferred to Phase 3 (D-03).
-This module uses keyword overlap only — a fast, deterministic heuristic.
+Event-level grouping catches ALL mutually exclusive market groups on Polymarket
+— both NegRisk-enabled events and standard multi-outcome events (e.g., elections
+with N candidates) — unlike the old keyword heuristic which only found groups
+with overlapping question text.
+
+Gamma API is called ONCE at startup via load_event_groups(). The detection loop
+(detect_cross_market_opportunities) is hot-path and never makes network calls.
 """
+import httpx
 from collections import Counter, defaultdict
 from datetime import datetime
 
@@ -110,6 +118,7 @@ def detect_cross_market_opportunities(
         yes_asks: list[float] = []
         depths: list[float] = []
         categories: list[str] = []
+        legs_data: list[dict] = []
 
         # Capture group[0]'s YES token ID before the loop overwrites yes_token_id (D-01)
         first_market_tokens = group[0].get("tokens", [])
@@ -137,6 +146,11 @@ def detect_cross_market_opportunities(
             yes_asks.append(price.yes_ask)
             depths.append(price.yes_depth)
             categories.append(get_market_category(market))
+            legs_data.append({
+                "token_id": yes_token_id,
+                "ask": price.yes_ask,
+                "depth": price.yes_depth,
+            })
 
         if not all_prices_available:
             continue
@@ -191,7 +205,8 @@ def detect_cross_market_opportunities(
             confidence_score=round(confidence, 4),
             detected_at=datetime.utcnow(),
             yes_token_id=group0_yes_token_id,
-            no_token_id="",   # D-01: cross-market has no NO token; Gate 0 will skip these opps
+            no_token_id="",   # D-01: cross-market has no NO token
+            legs=legs_data,   # all YES token legs for cross-market execution
         )
         opportunities.append(opp)
 
