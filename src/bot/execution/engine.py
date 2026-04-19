@@ -109,6 +109,141 @@ def simulate_vwap(asks: list, target_size_usd: float) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Cross-market execution helper
+# ---------------------------------------------------------------------------
+
+async def _execute_cross_market(
+    client,
+    opp: "ArbitrageOpportunity",
+    config,
+    risk_gate,
+    arb_id: str,
+    results: list,
+) -> tuple[str, list]:
+    """
+    Execute a cross-market arbitrage opportunity.
+
+    SIZING: Equal shares across all legs (NOT equal dollars).
+      total_yes = sum(leg["ask"] for each leg)
+      target_shares = kelly_usd / total_yes
+      size_usd_i = leg["ask"] * target_shares   ← proportional to ask
+      token_count_i = size_usd_i / leg["ask"]  = target_shares (same for all legs)
+
+    This guarantees: regardless of which leg wins, payout = target_shares * $1.00.
+    Profit = target_shares * (1.0 - total_yes) = guaranteed.
+
+    HEDGE: If any leg fails after earlier legs filled, all filled legs are
+    sold at price=0.01 (market-aggressive, same pattern as YES+NO hedge).
+    """
+    total_yes = sum(leg["ask"] for leg in opp.legs)
+    kelly_usd = config.total_capital_usd * config.kelly_max_capital_pct
+    target_shares = kelly_usd / total_yes   # equal shares per leg
+
+    logger.info(
+        f"Cross-market execution | market={opp.market_id} legs={len(opp.legs)} "
+        f"total_yes={total_yes:.3f} target_shares={target_shares:.2f} kelly_usd={kelly_usd:.2f}"
+    )
+
+    filled_legs: list[dict] = []   # track for hedge on partial failure
+
+    for i, leg in enumerate(opp.legs):
+        token_id = leg["token_id"]
+        ask_price = leg["ask"]
+        size_usd = ask_price * target_shares  # proportional dollar amount for this leg
+
+        if risk_gate.is_kill_switch_active():
+            logger.warning(
+                f"Kill switch — aborting cross-market at leg {i + 1}/{len(opp.legs)} "
+                f"for market={opp.market_id}"
+            )
+            break
+
+        leg_resp = None
+        try:
+            leg_resp = await place_fak_order(
+                client, token_id, ask_price, size_usd, "BUY"
+            )
+        except Exception as exc:
+            logger.error(
+                f"Cross-market leg {i + 1}/{len(opp.legs)} exception "
+                f"for market={opp.market_id}: {exc}"
+            )
+
+        if leg_resp:
+            filled_legs.append({"token_id": token_id, "ask": ask_price, "size_usd": size_usd})
+            results.append(ExecutionResult(
+                market_id=opp.market_id,
+                leg=f"leg_{i + 1}",
+                side="BUY",
+                token_id=token_id,
+                price=ask_price,
+                size=size_usd,
+                order_id=leg_resp.get("orderID"),
+                status="filled",
+                size_filled=size_usd,
+                kelly_size_usd=kelly_usd,
+                vwap_price=ask_price,
+            ))
+            logger.info(
+                f"Cross-market leg {i + 1}/{len(opp.legs)} filled | "
+                f"market={opp.market_id} token={token_id} order={leg_resp.get('orderID')}"
+            )
+        else:
+            logger.warning(
+                f"Cross-market leg {i + 1}/{len(opp.legs)} failed | market={opp.market_id}"
+            )
+            results.append(ExecutionResult(
+                market_id=opp.market_id,
+                leg=f"leg_{i + 1}",
+                side="BUY",
+                token_id=token_id,
+                price=ask_price,
+                size=size_usd,
+                order_id=None,
+                status="failed",
+                size_filled=0.0,
+                kelly_size_usd=kelly_usd,
+                vwap_price=ask_price,
+                error_msg="place_fak_order returned None",
+            ))
+            # Hedge: sell all previously filled legs to unwind open exposure
+            if filled_legs:
+                logger.warning(
+                    f"Cross-market partial fill — hedging {len(filled_legs)} filled leg(s) "
+                    f"for market={opp.market_id}"
+                )
+                for filled in filled_legs:
+                    hedge_resp = None
+                    try:
+                        hedge_resp = await place_fak_order(
+                            client, filled["token_id"], _HEDGE_PRICE,
+                            filled["size_usd"], "SELL"
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            f"Cross-market hedge SELL exception for "
+                            f"market={opp.market_id} token={filled['token_id']}: {exc}"
+                        )
+                    results.append(ExecutionResult(
+                        market_id=opp.market_id,
+                        leg="hedge",
+                        side="SELL",
+                        token_id=filled["token_id"],
+                        price=_HEDGE_PRICE,
+                        size=filled["size_usd"],
+                        order_id=hedge_resp.get("orderID") if hedge_resp else None,
+                        status="hedged" if hedge_resp else "failed",
+                        size_filled=filled["size_usd"] if hedge_resp else 0.0,
+                        kelly_size_usd=kelly_usd,
+                        vwap_price=ask_price,
+                        error_msg=None if hedge_resp else "cross-market hedge SELL failed",
+                    ))
+            break  # stop processing remaining legs after failure
+
+    return arb_id, results
+
+
+# ---------------------------------------------------------------------------
 # Main execution coroutine
 # ---------------------------------------------------------------------------
 
@@ -142,8 +277,14 @@ async def execute_opportunity(
     no_token_id = opp.no_token_id
 
     # ------------------------------------------------------------------
-    # Gate 0: Token ID presence check
+    # Gate 0: Token ID presence check + cross-market routing
     # ------------------------------------------------------------------
+    # Cross-market opportunities have no_token_id="" by design (D-01).
+    # They bypass Gate 0 only when opp.legs is populated with per-leg token IDs.
+    # YES+NO opportunities with missing token IDs still hit the skip path below.
+    if opp.opportunity_type == "cross_market" and opp.legs:
+        return await _execute_cross_market(client, opp, config, risk_gate, arb_id, results)
+
     if not yes_token_id or not no_token_id:
         logger.warning(
             f"execute_opportunity: missing token IDs for market={opp.market_id} — skipping"

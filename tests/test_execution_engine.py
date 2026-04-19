@@ -334,6 +334,127 @@ async def test_no_exhaustion_calls_record_order_error(mock_verify, mock_kelly):
 
 
 # ---------------------------------------------------------------------------
+# Cross-market helpers and tests (01-03)
+# ---------------------------------------------------------------------------
+
+def _cross_opp(legs=None):
+    """Cross-market ArbitrageOpportunity with two legs: ask 0.40 and 0.25."""
+    from datetime import datetime
+    return ArbitrageOpportunity(
+        market_id="nrm_group_001",
+        market_question="[2-way cross] Will Alice win? | Will Bob win?",
+        opportunity_type="cross_market",
+        category="politics",
+        yes_ask=0.40, no_ask=0.0,
+        gross_spread=0.35, estimated_fees=0.02, net_spread=0.33,
+        depth=200.0, vwap_yes=0.40, vwap_no=0.0,
+        confidence_score=0.97, detected_at=datetime.utcnow(),
+        yes_token_id="tok_a", no_token_id="",
+        legs=legs if legs is not None else [
+            {"token_id": "tok_a", "ask": 0.40, "depth": 200.0},
+            {"token_id": "tok_b", "ask": 0.25, "depth": 200.0},
+        ],
+    )
+
+
+@pytest.mark.asyncio
+async def test_cross_market_equal_shares():
+    """
+    Cross-market execution uses equal shares: size_usd_i = ask_i * (kelly_usd / total_yes).
+    Verifies place_fak_order receives DIFFERENT size_usd per leg proportional to ask prices.
+    """
+    client = MagicMock()
+    config = _config()  # total_capital_usd=1000, kelly_max_capital_pct=0.05
+    risk_gate = MagicMock()
+    risk_gate.is_kill_switch_active.return_value = False
+
+    opp = _cross_opp()  # legs: ask=0.40, ask=0.25; total_yes=0.65
+    # kelly_usd = 1000 * 0.05 = 50
+    # target_shares = 50 / 0.65 = 76.92...
+    # Leg A size_usd = 0.40 * 76.92 = 30.77
+    # Leg B size_usd = 0.25 * 76.92 = 19.23
+    kelly_usd = config.total_capital_usd * config.kelly_max_capital_pct
+    total_yes = 0.65
+    target_shares = kelly_usd / total_yes
+    expected_size_a = pytest.approx(0.40 * target_shares, rel=1e-4)
+    expected_size_b = pytest.approx(0.25 * target_shares, rel=1e-4)
+
+    filled_resp = {"orderID": "order_x", "status": "matched"}
+
+    with patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock, return_value=filled_resp) as mock_fak:
+        arb_id, results = await execute_opportunity(client, opp, config, risk_gate)
+
+    assert mock_fak.call_count == 2
+    call_args = [call.args for call in mock_fak.call_args_list]
+    # call signature: (client, token_id, price, size_usd, side)
+    _, tok_a, price_a, size_a, _ = call_args[0]
+    _, tok_b, price_b, size_b, _ = call_args[1]
+    assert tok_a == "tok_a"
+    assert tok_b == "tok_b"
+    assert size_a == expected_size_a, f"Leg A size_usd={size_a} expected {0.40 * target_shares:.4f}"
+    assert size_b == expected_size_b, f"Leg B size_usd={size_b} expected {0.25 * target_shares:.4f}"
+    # Sizes must NOT be equal (would only be equal if asks were equal)
+    assert size_a != size_b, "Equal dollar amounts detected — should be proportional to ask prices"
+    assert len(results) == 2
+    assert all(r.status == "filled" for r in results)
+
+
+@pytest.mark.asyncio
+async def test_cross_market_partial_hedge():
+    """If leg 2 fails, leg 1 (already filled) is sold at _HEDGE_PRICE=0.01."""
+    client = MagicMock()
+    config = _config()
+    risk_gate = MagicMock()
+    risk_gate.is_kill_switch_active.return_value = False
+
+    opp = _cross_opp()
+    filled_resp = {"orderID": "order_a", "status": "matched"}
+
+    call_count = 0
+    async def fak_side_effect(client, token_id, price, size_usd, side):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return filled_resp   # leg 1 BUY fills
+        if side == "SELL":
+            return {"orderID": "hedge_order", "status": "matched"}  # hedge SELL succeeds
+        return None              # leg 2 BUY fails → triggers hedge
+
+    with patch("bot.execution.engine.place_fak_order", side_effect=fak_side_effect) as mock_fak:
+        arb_id, results = await execute_opportunity(client, opp, config, risk_gate)
+
+    # Calls: leg 1 BUY (fill), leg 2 BUY (fail), hedge SELL leg 1
+    assert mock_fak.call_count == 3
+    statuses = [r.status for r in results]
+    assert "filled" in statuses    # leg 1 filled
+    assert "failed" in statuses    # leg 2 failed
+    assert "hedged" in statuses    # leg 1 hedged
+    hedge_result = next(r for r in results if r.status == "hedged")
+    assert hedge_result.side == "SELL"
+    assert hedge_result.price == 0.01
+    assert hedge_result.token_id == "tok_a"
+
+
+@pytest.mark.asyncio
+async def test_yes_no_missing_token_still_skips():
+    """YES+NO opp with empty no_token_id and no legs still hits Gate 0 skip."""
+    client = MagicMock()
+    config = _config()
+    risk_gate = MagicMock()
+    risk_gate.is_kill_switch_active.return_value = False
+
+    opp = _opp(no_token_id="")  # YES+NO type, legs=[] by default
+
+    with patch("bot.execution.engine.place_fak_order", new_callable=AsyncMock) as mock_fak:
+        arb_id, results = await execute_opportunity(client, opp, config, risk_gate)
+
+    assert len(results) == 1
+    assert results[0].status == "skipped"
+    assert results[0].error_msg == "missing token IDs"
+    mock_fak.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # Test 10: YES verify failure still calls record_order_error() (RISK-03 regression)
 # ---------------------------------------------------------------------------
 
