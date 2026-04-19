@@ -32,69 +32,76 @@ from bot.detection.fee_model import (
 from bot.detection.opportunity import ArbitrageOpportunity
 from bot.scanner.price_cache import PriceCache
 
-_MIN_WORD_LENGTH = 4        # ignore short words (articles, prepositions)
-_MIN_SHARED_WORDS = 2       # minimum shared words to consider markets related
 _MAX_GROUP_SIZE = 20        # cap: groups > 20 markets are likely noise
 _MIN_GROUP_SIZE = 2         # single-market groups are handled by yes_no_arb
 
+_GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
 
-def _extract_keywords(question: str) -> frozenset[str]:
-    """Extract significant words from a market question."""
-    words = question.lower().split()
-    return frozenset(
-        w.strip("?.,!") for w in words
-        if len(w.strip("?.,!")) >= _MIN_WORD_LENGTH
-        and w.strip("?.,!").isalpha()
-    )
+# Module-level cache: condition_id -> event_id
+# Populated once at startup by load_event_groups(); never written during detection.
+_event_groups: dict[str, str] = {}
 
 
-def _group_markets(markets: list[dict]) -> list[list[dict]]:
+def load_event_groups(condition_ids: list[str] | None = None) -> None:
     """
-    Group markets by keyword overlap.
+    Fetch event->market mappings from the Gamma API and populate _event_groups.
 
-    Uses a BFS connected-components approach: for each pair of markets,
-    check if they share >= _MIN_SHARED_WORDS significant keywords.
-    Groups are sets of markets with sufficient overlap.
+    Call this once when markets are loaded (at scanner startup), NOT on every
+    detection cycle. The mapping is stable — events don't change mid-session.
+
+    condition_ids: optional filter; if None, fetches all active events.
     """
-    if len(markets) < 2:
-        return []
-
-    keywords = {m["condition_id"]: _extract_keywords(m.get("question", "")) for m in markets}
-    market_by_id = {m["condition_id"]: m for m in markets}
-
-    # Build adjacency: which markets share enough keywords?
-    adj: dict[str, set[str]] = defaultdict(set)
-    cids = [m["condition_id"] for m in markets]
-
-    for i, cid_a in enumerate(cids):
-        for cid_b in cids[i + 1:]:
-            shared = keywords[cid_a] & keywords[cid_b]
-            if len(shared) >= _MIN_SHARED_WORDS:
-                adj[cid_a].add(cid_b)
-                adj[cid_b].add(cid_a)
-
-    # Find connected components (groups) via BFS
-    visited: set[str] = set()
-    groups: list[list[dict]] = []
-
-    for cid in cids:
-        if cid in visited or cid not in adj:
-            continue
-        # BFS from cid
-        group_cids: list[str] = []
-        queue = [cid]
-        while queue:
-            current = queue.pop(0)
-            if current in visited:
+    global _event_groups
+    try:
+        params: dict = {"active": "true", "limit": 500}
+        resp = httpx.get(_GAMMA_EVENTS_URL, params=params, timeout=10.0)
+        resp.raise_for_status()
+        count = 0
+        for event in resp.json():
+            event_id = str(event.get("id", ""))
+            if not event_id:
                 continue
-            visited.add(current)
-            group_cids.append(current)
-            queue.extend(adj[current] - visited)
+            for market in event.get("markets", []):
+                cid = market.get("conditionId") or market.get("condition_id", "")
+                if cid:
+                    _event_groups[cid] = event_id
+                    count += 1
+        logger.info(
+            f"load_event_groups: loaded {len(_event_groups)} condition_id->event_id "
+            f"mappings ({count} from gamma API)"
+        )
+    except Exception as exc:
+        logger.warning(f"load_event_groups: gamma API fetch failed: {exc}")
 
-        if _MIN_GROUP_SIZE <= len(group_cids) <= _MAX_GROUP_SIZE:
-            groups.append([market_by_id[c] for c in group_cids])
 
-    return groups
+def _group_by_event(markets: list[dict]) -> list[list[dict]]:
+    """
+    Group markets by Polymarket event ID (from Gamma API) with neg_risk_market_id fallback.
+
+    All markets in the same event are mutually exclusive — exactly one will
+    resolve YES. This covers both NegRisk-enabled and standard multi-outcome
+    events (e.g., election with N candidates).
+
+    Markets without any event ID (standalone binary markets) are silently ignored.
+
+    Requires load_event_groups() to have been called at startup for full coverage.
+    The neg_risk_market_id fallback ensures NegRisk-enabled events are still
+    detected even if the Gamma API call failed.
+    """
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for market in markets:
+        cid = market.get("condition_id", "")
+        event_id = (
+            _event_groups.get(cid)                  # Gamma API event (primary)
+            or market.get("neg_risk_market_id")      # NegRisk fallback
+            or market.get("neg_risk_id")             # alt field name
+        )
+        if event_id:
+            groups[event_id].append(market)
+    return [
+        group for group in groups.values()
+        if _MIN_GROUP_SIZE <= len(group) <= _MAX_GROUP_SIZE
+    ]
 
 
 def detect_cross_market_opportunities(
@@ -103,14 +110,15 @@ def detect_cross_market_opportunities(
     config: BotConfig,
 ) -> list[ArbitrageOpportunity]:
     """
-    Detect cross-market arbitrage via keyword grouping + exclusivity constraint.
+    Detect cross-market arbitrage via event-level grouping + exclusivity constraint.
 
-    Groups markets with shared question keywords and detects when the sum of
-    YES asks is < $1.00 after fees (mutual exclusivity arbitrage).
+    Groups markets by their shared Polymarket event (using _event_groups populated
+    by load_event_groups() at startup) and detects when the sum of YES asks is
+    < $1.00 after fees (mutual exclusivity arbitrage).
 
     Returns list of ArbitrageOpportunity with opportunity_type='cross_market'.
     """
-    groups = _group_markets(markets)
+    groups = _group_by_event(markets)
     opportunities: list[ArbitrageOpportunity] = []
 
     for group in groups:
