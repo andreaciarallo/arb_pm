@@ -50,20 +50,20 @@ _(None — v1.0 shipped all requirements. Next milestone to be defined.)_
 
 ## Context
 
-**Status:** v1.0 shipped 2026-04-18. Bot is live in `--live` mode on HEL1.
+**Status:** v1.1 shipped 2026-04-19. Bot is in dry-run mode on HEL1.
 
-**VPS:** Hetzner CPX31, Helsinki FI (204.168.164.145). Previously Ashburn VA — geo-blocked by Polymarket, migrated to Helsinki.
+**VPS:** Hetzner CPX31, Helsinki FI (204.168.164.145). UFW + fail2ban active after SSH brute-force attack detected 2026-04-19.
 
 **Wallet:** `0x0036F15972166642fCb242F11fa5D1b6AD58Bc70`. Collateral: USDC.e (`0x2791...`). Balance: ~5.88 USDC.e, ~25 MATIC.
 
-**Codebase:** 3,853 LOC Python (src), 3,039 LOC tests. 183 commits over 22 days.
+**Codebase:** ~4,100 LOC Python (src), ~3,200 LOC tests. 205 commits. 109 unit tests passing.
 
 **Tech stack:** Python 3.12, py-clob-client 0.34.6, httpx, websockets, loguru, FastAPI, SQLite, python-telegram-bot, Docker.
 
 **Known issues / technical debt:**
-- Cross-market detection uses keyword heuristic only — LLM mutual exclusivity validation deferred to v1.1
 - YES/NO arb threshold 1.5% — market is efficient, 0 detected in dry-run; strategy may need tuning
 - WebSocket subscription capped at ~2000 token IDs (server silently drops beyond that)
+- Cross-market execution live path not yet validated in production (dry-run only)
 
 ## Constraints
 
@@ -84,10 +84,14 @@ _(None — v1.0 shipped all requirements. Next milestone to be defined.)_
 | USDC.e collateral (not native USDC) | Polymarket uses bridged USDC | ✓ Critical — native USDC causes silent failures |
 | hasattr guard for record_order_error | Defensive call at both YES-verify and NO-exhaust | ✓ Good — consistent pattern, test-mockable |
 | `_last_trip_count` captured before clear() | CB alert must show live count, not static threshold | ✓ Good — order matters, before .clear() |
+| PATH B (Gamma API) for cross-market grouping | CLOB market objects have no `event_id` field; Gamma `conditionId` = CLOB `condition_id` | ✓ Good — correct, covers all event types |
+| Equal shares not equal dollars (cross-market) | `target_shares = kelly_usd / total_yes` — same payout regardless of winner | ✓ Good — correct arb sizing math |
+| `load_event_groups()` called once at startup | Not in hot detection path — module-level cache dict populated before first cycle | ✓ Good — zero latency impact on scan loop |
+| Partial hedge at price=0.01 | Sell ALL filled legs immediately on any leg failure — aggressive but recovers capital | ✓ Good — prevents stranded positions |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-04-18 after v1.0 milestone completion (all 23 v1 requirements shipped)*
+*Last updated: 2026-04-19 after v1.1 milestone completion (cross-market detection/execution fixes)*

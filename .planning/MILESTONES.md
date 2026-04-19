@@ -1,5 +1,22 @@
 # Milestones
 
+## v1.1 Cross-Market Fixes (Shipped: 2026-04-19)
+
+**Phases completed:** 1 phase, 4 plans
+**Timeline:** 2026-04-18 → 2026-04-19 (1 day)
+**Scale:** 22 commits, 116 files, +3,603/-110 lines
+
+**Key accomplishments:**
+
+- Switched VPS from `--live` to dry-run mode via docker-compose.yml override; hardened VPS with UFW + fail2ban after SSH brute-force attack
+- Replaced BFS keyword-heuristic cross-market grouping with Gamma API event-level grouping (`conditionId → event_id`) — eliminates false positives from unrelated markets
+- Implemented `_execute_cross_market()` with equal-shares sizing (`target_shares = kelly_usd / total_yes`), per-leg FAK BUY orders, and partial-fill hedge (SELL at $0.01)
+- Wired `load_event_groups()` into both scanner runners so `_event_groups` is populated before first detection cycle; 109 unit tests passing
+
+**Archive:** `.planning/milestones/v1.1-ROADMAP.md`
+
+---
+
 ## v1.0 MVP (Shipped: 2026-04-18)
 
 **Phases completed:** 8 phases, 25 plans

@@ -8,6 +8,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-8 (shipped 2026-04-18)
+- ✅ **v1.1 Cross-Market Fixes** — Phase 1 (shipped 2026-04-19)
 
 ---
 
@@ -29,18 +30,14 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
 
 </details>
 
-### Phase 1: Research Polymarket market mechanics and arb math to fix cross-market false positives (gross < 1.0 passing through, missing token IDs on execution), set dry-run mode, and fix the missing token ID lookup bug in the execution engine
+<details>
+<summary>✅ v1.1 Cross-Market Fixes (Phase 1) — SHIPPED 2026-04-19</summary>
 
-**Goal:** Fix the three root causes: switch VPS bot to dry-run, replace keyword heuristic in cross-market detector with neg_risk_market_id grouping, and wire cross-market execution with per-leg token IDs.
-**Requirements:** DRY-RUN, CROSS-DETECT, CROSS-EXEC
-**Depends on:** Phase 0
-**Plans:** 4 plans
+- [x] Phase 1: Fix Cross-Market False Positives & Wiring (4/4 plans) — completed 2026-04-19
 
-Plans:
-- [ ] 01-01-PLAN.md — Switch VPS to dry-run and lock via docker-compose.yml command: override
-- [x] 01-02-PLAN.md — Replace keyword BFS with neg_risk_market_id grouping in cross_market.py
-- [x] 01-03-PLAN.md — Add legs field to ArbitrageOpportunity and wire cross-market execution in engine.py
-- [ ] 01-04-PLAN.md — Wire load_event_groups() into dry_run.py and live_run.py scanner startup (gap closure)
+Full details: `.planning/milestones/v1.1-ROADMAP.md`
+
+</details>
 
 ---
 
@@ -56,4 +53,4 @@ Plans:
 | 6. Wire Critical Telegram Alerts | v1.0 | 1/1 | Complete | 2026-04-18 |
 | 7. Formal Verification — Phase 04 & 06 | v1.0 | 1/1 | Complete | 2026-04-18 |
 | 8. Fix Circuit Breaker & Alert Accuracy | v1.0 | 2/2 | Complete | 2026-04-18 |
-| 1. Fix Cross-Market False Positives & Wiring | post-v1.0 | 0/4 | In Progress | — |
+| 1. Fix Cross-Market False Positives & Wiring | v1.1 | 4/4 | Complete | 2026-04-19 |
