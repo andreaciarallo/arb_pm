@@ -20,6 +20,12 @@ from bot.detection.fee_model import (
     get_min_profit_threshold,
     get_taker_fee,
 )
+from bot.detection.filters import (
+    DedupTracker,
+    FilterDiagnostics,
+    is_ask_floor_reject,
+    is_sum_cap_reject,
+)
 from bot.detection.opportunity import ArbitrageOpportunity
 from bot.scanner.price_cache import PriceCache
 
@@ -28,7 +34,8 @@ def detect_yes_no_opportunities(
     markets: list[dict],
     cache: PriceCache,
     config: BotConfig,
-) -> list[ArbitrageOpportunity]:
+    dedup: DedupTracker | None = None,
+) -> tuple[list[ArbitrageOpportunity], FilterDiagnostics]:
     """
     Scan liquid markets for YES+NO structural arbitrage opportunities.
 
@@ -41,7 +48,7 @@ def detect_yes_no_opportunities(
     6. Gate on min_order_book_depth and category profit threshold
     7. Yield ArbitrageOpportunity if all gates pass
 
-    Returns list of detected opportunities (may be empty).
+    Returns (opportunities, diagnostics) tuple. Diagnostics track filter rejection counts.
     """
     opportunities: list[ArbitrageOpportunity] = []
 
@@ -50,6 +57,7 @@ def detect_yes_no_opportunities(
     depth_fails = 0
     spread_fails = 0
     best_sum = 2.0  # track lowest YES_ask + NO_ask seen
+    diag = FilterDiagnostics()
 
     for market in markets:
         tokens = market.get("tokens", [])
@@ -79,6 +87,24 @@ def detect_yes_no_opportunities(
         both_cached += 1
         yes_ask = yes_price.yes_ask
         no_ask = no_price.yes_ask  # NO token's ask price is stored in yes_ask field
+
+        # NEW Gate: DETECT-01 ask floor (per D-11: filter before leaving detector)
+        if is_ask_floor_reject(yes_ask, no_ask, config.min_ask_floor):
+            diag.ask_floor_rejects += 1
+            logger.debug(
+                f"DETECT-01 reject: ask floor | {market.get('question', '')[:40]} | "
+                f"yes={yes_ask} no={no_ask}"
+            )
+            continue
+
+        # NEW Gate: DETECT-02 sum cap
+        if is_sum_cap_reject(yes_ask, no_ask, config.max_ask_sum):
+            diag.sum_cap_rejects += 1
+            logger.debug(
+                f"DETECT-02 reject: sum cap | {market.get('question', '')[:40]} | "
+                f"sum={yes_ask + no_ask:.4f}"
+            )
+            continue
 
         # Gate 1: Skip resolved markets
         if yes_ask >= 1.0 or no_ask >= 1.0:
@@ -130,6 +156,16 @@ def detect_yes_no_opportunities(
             yes_token_id=yes_token_id,
             no_token_id=no_token_id,
         )
+        # NEW Gate: DETECT-05 dedup (LAST -- only dedup genuine opportunities)
+        if dedup is not None and dedup.is_duplicate(
+            market.get("condition_id", ""), "yes_no"
+        ):
+            diag.dedup_suppressed += 1
+            logger.debug(
+                f"DETECT-05 suppress: dedup | {market.get('question', '')[:40]}"
+            )
+            continue
+
         opportunities.append(opportunity)
 
         logger.info(
@@ -142,7 +178,9 @@ def detect_yes_no_opportunities(
     logger.info(
         f"YES/NO scan: {both_cached} pairs cached | best_sum={best_sum_str} | "
         f"depth_fails={depth_fails} spread_fails={spread_fails} | "
+        f"floor_rej={diag.ask_floor_rejects} sum_rej={diag.sum_cap_rejects} "
+        f"dedup={diag.dedup_suppressed} | "
         f"{len(opportunities)} opps"
     )
 
-    return opportunities
+    return opportunities, diag

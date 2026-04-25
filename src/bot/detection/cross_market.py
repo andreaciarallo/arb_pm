@@ -29,6 +29,12 @@ from bot.detection.fee_model import (
     get_min_profit_threshold,
     get_taker_fee,
 )
+from bot.detection.filters import (
+    DedupTracker,
+    FilterDiagnostics,
+    has_dead_leg,
+    is_total_yes_reject,
+)
 from bot.detection.opportunity import ArbitrageOpportunity
 from bot.scanner.price_cache import PriceCache
 
@@ -108,7 +114,8 @@ def detect_cross_market_opportunities(
     markets: list[dict],
     cache: PriceCache,
     config: BotConfig,
-) -> list[ArbitrageOpportunity]:
+    dedup: DedupTracker | None = None,
+) -> tuple[list[ArbitrageOpportunity], FilterDiagnostics]:
     """
     Detect cross-market arbitrage via event-level grouping + exclusivity constraint.
 
@@ -116,10 +123,11 @@ def detect_cross_market_opportunities(
     by load_event_groups() at startup) and detects when the sum of YES asks is
     < $1.00 after fees (mutual exclusivity arbitrage).
 
-    Returns list of ArbitrageOpportunity with opportunity_type='cross_market'.
+    Returns (opportunities, diagnostics) tuple. Diagnostics track filter rejection counts.
     """
     groups = _group_by_event(markets)
     opportunities: list[ArbitrageOpportunity] = []
+    diag = FilterDiagnostics()
 
     for group in groups:
         # Collect YES ask prices and depths for all markets in group
@@ -163,13 +171,30 @@ def detect_cross_market_opportunities(
         if not all_prices_available:
             continue
 
+        # NEW Gate: DETECT-03 dead legs (per D-11: filter before leaving detector)
+        leg_ask_values = [leg["ask"] for leg in legs_data]
+        if has_dead_leg(leg_ask_values, config.min_cross_leg_ask):
+            diag.leg_floor_rejects += 1
+            logger.debug(
+                f"DETECT-03 reject: dead leg | min_ask={min(leg_ask_values):.4f}"
+            )
+            continue
+
+        # NEW Gate: DETECT-04 total_yes floor
+        total_yes = sum(yes_asks)
+        if is_total_yes_reject(total_yes, config.min_cross_total_yes):
+            diag.total_yes_rejects += 1
+            logger.debug(
+                f"DETECT-04 reject: total_yes floor | total_yes={total_yes:.4f}"
+            )
+            continue
+
         # Depth gate: weakest link in the group
         min_depth = min(depths)
         if min_depth < config.min_order_book_depth:
             continue
 
         # Exclusivity check
-        total_yes = sum(yes_asks)
         if total_yes >= 1.0:
             continue  # no arbitrage — total >= $1.00
 
@@ -216,6 +241,16 @@ def detect_cross_market_opportunities(
             no_token_id="",   # D-01: cross-market has no NO token
             legs=legs_data,   # all YES token legs for cross-market execution
         )
+        # NEW Gate: DETECT-05 dedup (LAST)
+        if dedup is not None and dedup.is_duplicate(
+            group[0].get("condition_id", ""), "cross_market"
+        ):
+            diag.dedup_suppressed += 1
+            logger.debug(
+                f"DETECT-05 suppress: dedup | {group[0].get('question', '')[:40]}"
+            )
+            continue
+
         opportunities.append(opp)
 
         logger.info(
@@ -223,4 +258,4 @@ def detect_cross_market_opportunities(
             f"cat={dominant_category} gross={gross_spread:.3f} net={net_spread:.3f}"
         )
 
-    return opportunities
+    return opportunities, diag
