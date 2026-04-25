@@ -422,3 +422,52 @@ def test_classify_result_type():
     from bot.detection.dependency import classify_pair, DependencyResult
     result = classify_pair("Some question?", "Another question?")
     assert isinstance(result, DependencyResult)
+
+
+# ---------------------------------------------------------------------------
+# WR-01 regression: Implication false positive prevention
+# ---------------------------------------------------------------------------
+
+def test_implication_no_false_positive_equal_specificity():
+    """WR-01: Two equally-specific questions must NOT fire implication."""
+    from bot.detection.dependency import _keyword_implication
+    # Both match child pattern (reaches $X) -- neither is parent-only
+    score = _keyword_implication("Bitcoin reaches $150k?", "ETH reaches $5k?")
+    assert score == 0.0
+
+
+def test_implication_genuine_subset_still_works():
+    """WR-01: Genuine child->parent (specific->general) must still return 1.0."""
+    from bot.detection.dependency import _keyword_implication
+    # "wins by 5%" is child (specific), "wins" is parent (general)
+    score = _keyword_implication("Team X wins by 5%?", "Team X wins?")
+    assert score == 1.0
+
+
+# ---------------------------------------------------------------------------
+# WR-02 regression: Partial dict handling
+# ---------------------------------------------------------------------------
+
+def test_classify_partial_weights_no_crash():
+    """WR-02: Partial weights dict must not KeyError."""
+    from bot.detection.dependency import classify_pair
+    # Only providing 'jaccard' -- other keys must fall back to DEFAULT_WEIGHTS
+    result = classify_pair("Some question?", "Another question?", weights={"jaccard": 1.0})
+    assert result.label in ("subset", "related", "independent")
+
+
+def test_classify_partial_thresholds_no_crash():
+    """WR-02: Partial thresholds dict must not KeyError."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair("Some question?", "Another question?", thresholds={"subset": 0.8})
+    assert result.label in ("subset", "related", "independent")
+
+
+def test_classify_empty_dicts_use_defaults():
+    """WR-02: Empty dicts should use all defaults (same as None)."""
+    from bot.detection.dependency import classify_pair
+    result_none = classify_pair("Kraken IPO in 2025?", "Kraken IPO by December 31, 2026?")
+    result_empty = classify_pair("Kraken IPO in 2025?", "Kraken IPO by December 31, 2026?",
+                                  weights={}, thresholds={})
+    assert result_none.score == pytest.approx(result_empty.score)
+    assert result_none.label == result_empty.label
