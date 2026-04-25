@@ -345,3 +345,186 @@ def test_cross_dedup_suppresses_repeat():
         assert diag2.dedup_suppressed == 1
     finally:
         _restore_event_groups(original)
+
+
+# ---------------------------------------------------------------------------
+# DEP-09/10/11: Dependency gate integration tests
+# ---------------------------------------------------------------------------
+
+def test_dependency_audit_mode_logs_not_rejects():
+    """DEP-10: Audit mode (default) logs non-independent pairs but does NOT reject."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+
+    cache = PriceCache()
+    # Two deadline-variant questions in same event -> classify_pair returns "subset"
+    markets = [
+        _make_market("0x1", "Kraken IPO in 2025?", "tok_a", event_id="event_kraken"),
+        _make_market("0x2", "Kraken IPO by December 31, 2026?", "tok_b", event_id="event_kraken"),
+    ]
+    _populate_cache(cache, "tok_a", 0.30)
+    _populate_cache(cache, "tok_b", 0.20)
+
+    original = _patch_event_groups(markets)
+    try:
+        config = _make_config()  # dependency_audit_mode=True by default
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+
+        # Audit mode: group is NOT rejected, opportunity still produced
+        assert len(opps) == 1
+        assert diag.dep_audit_flags == 1
+        assert diag.dep_rejects == 0
+    finally:
+        _restore_event_groups(original)
+
+
+def test_dependency_rejection_mode_rejects_group():
+    """DEP-11: Rejection mode drops groups with non-independent pairs."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+    from bot.config import BotConfig
+
+    cache = PriceCache()
+    # Same deadline-variant pair as above -> "subset" classification
+    markets = [
+        _make_market("0x1", "Kraken IPO in 2025?", "tok_a", event_id="event_kraken"),
+        _make_market("0x2", "Kraken IPO by December 31, 2026?", "tok_b", event_id="event_kraken"),
+    ]
+    _populate_cache(cache, "tok_a", 0.30)
+    _populate_cache(cache, "tok_b", 0.20)
+
+    original = _patch_event_groups(markets)
+    try:
+        config = BotConfig(
+            poly_api_key="k", poly_api_secret="s", poly_api_passphrase="p",
+            wallet_private_key="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+            polygon_rpc_http="https://polygon.example.com",
+            polygon_rpc_ws="wss://polygon.example.com",
+            dependency_audit_mode=False,  # Rejection mode
+        )
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+
+        # Rejection mode: group is rejected
+        assert len(opps) == 0
+        assert diag.dep_rejects == 1
+        assert diag.dep_audit_flags == 0
+    finally:
+        _restore_event_groups(original)
+
+
+def test_dependency_independent_pairs_pass_through():
+    """DEP-09: Groups where all pairs are independent pass through normally."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+    from bot.config import BotConfig
+
+    cache = PriceCache()
+    # Use markets without event_id match so event_bonus=0, and unrelated questions
+    # so all signals are 0 -> independent classification
+    markets = [
+        _make_market("0x1", "Will Acme stock soar?", "tok_a", event_id="event_misc"),
+        _make_market("0x2", "Will Mars colony succeed?", "tok_b", event_id="event_misc"),
+    ]
+    _populate_cache(cache, "tok_a", 0.30)
+    _populate_cache(cache, "tok_b", 0.20)
+
+    original = _patch_event_groups(markets)
+    try:
+        # Even in rejection mode, independent pairs pass through
+        config = BotConfig(
+            poly_api_key="k", poly_api_secret="s", poly_api_passphrase="p",
+            wallet_private_key="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+            polygon_rpc_http="https://polygon.example.com",
+            polygon_rpc_ws="wss://polygon.example.com",
+            dependency_audit_mode=False,
+        )
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+
+        # Independent pairs: no dep flags, no dep rejects
+        assert len(opps) == 1
+        assert diag.dep_rejects == 0
+        assert diag.dep_audit_flags == 0
+    finally:
+        _restore_event_groups(original)
+
+
+def test_dependency_pairs_scoped_within_group():
+    """DEP-09: Pair comparison is scoped within event groups, not global."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+    from bot.config import BotConfig
+
+    cache = PriceCache()
+    # Group A: deadline variants (will be flagged as subset -> rejected)
+    # Group B: unrelated questions (independent -> passes through)
+    markets = [
+        _make_market("0xA1", "Kraken IPO in 2025?", "tok_a1", event_id="event_kraken"),
+        _make_market("0xA2", "Kraken IPO by December 31, 2026?", "tok_a2", event_id="event_kraken"),
+        _make_market("0xB1", "Will Acme stock soar?", "tok_b1", event_id="event_misc"),
+        _make_market("0xB2", "Will Mars colony succeed?", "tok_b2", event_id="event_misc"),
+    ]
+    for tok in ["tok_a1", "tok_a2", "tok_b1", "tok_b2"]:
+        _populate_cache(cache, tok, 0.25)
+
+    original = _patch_event_groups(markets)
+    try:
+        config = BotConfig(
+            poly_api_key="k", poly_api_secret="s", poly_api_passphrase="p",
+            wallet_private_key="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+            polygon_rpc_http="https://polygon.example.com",
+            polygon_rpc_ws="wss://polygon.example.com",
+            dependency_audit_mode=False,
+        )
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+
+        # Group A (kraken): deadline variants -> subset -> rejected
+        # Group B (misc): unrelated -> independent -> passes through
+        assert diag.dep_rejects >= 1  # group A rejected
+        # Group B produces opportunity (independent, total_yes=0.50 < 1.0)
+        assert len(opps) == 1
+    finally:
+        _restore_event_groups(original)
+
+
+def test_dependency_diagnostics_dep_counters():
+    """D-08: FilterDiagnostics includes dep_rejects and dep_audit_flags, initialized to 0."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+
+    cache = PriceCache()
+    # No markets -> no groups -> no dependency checks -> counters stay 0
+    config = _make_config()
+    opps, diag = detect_cross_market_opportunities([], cache, config)
+    assert diag.dep_rejects == 0
+    assert diag.dep_audit_flags == 0
+
+
+def test_dependency_audit_log_format(capfd):
+    """DEP-10/D-05: Audit mode logs with DEP-AUDIT prefix and signal breakdown."""
+    import sys
+    from loguru import logger as _logger
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+
+    cache = PriceCache()
+    markets = [
+        _make_market("0x1", "Kraken IPO in 2025?", "tok_a", event_id="event_kraken"),
+        _make_market("0x2", "Kraken IPO by December 31, 2026?", "tok_b", event_id="event_kraken"),
+    ]
+    _populate_cache(cache, "tok_a", 0.30)
+    _populate_cache(cache, "tok_b", 0.20)
+
+    # Add stderr sink to capture loguru output
+    sink_id = _logger.add(sys.stderr, format="{message}", level="INFO")
+    original = _patch_event_groups(markets)
+    try:
+        config = _make_config()  # audit mode ON
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+        captured = capfd.readouterr()
+
+        assert "DEP-AUDIT:" in captured.err
+        assert "score=" in captured.err
+        assert "jaccard=" in captured.err
+    finally:
+        _restore_event_groups(original)
+        _logger.remove(sink_id)
