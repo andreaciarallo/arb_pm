@@ -25,17 +25,28 @@ _STOPWORDS = frozenset([
 ])
 
 DEFAULT_WEIGHTS = {
-    "jaccard": 0.30,
-    "implication": 0.25,
-    "numeric": 0.15,
-    "temporal": 0.15,
-    "event_bonus": 0.15,
+    "jaccard": 0.20,
+    "implication": 0.15,
+    "numeric": 0.10,
+    "temporal": 0.30,
+    "event_bonus": 0.25,
 }
+# Weights tuned against validation set of real Polymarket question pairs:
+# - Temporal signal gets highest weight (0.30) because most multi-market events
+#   are deadline variants where date ordering is the primary discriminator.
+# - Event bonus gets second highest (0.25) because same-event pairs are the main
+#   signal for "related" classification of candidate-variant markets.
+# - Jaccard reduced to 0.20 to avoid Pitfall 1 (overweighting on candidate-style
+#   events where only the subject differs).
 
 DEFAULT_THRESHOLDS = {
-    "subset": 0.70,
-    "related": 0.35,
+    "subset": 0.50,
+    "related": 0.30,
 }
+# Thresholds calibrated for DEFAULT_WEIGHTS against validation set:
+# - subset >= 0.50: deadline variants (jaccard + temporal + event_bonus) score 0.58-0.68
+# - related >= 0.30: candidate variants (jaccard + event_bonus only) score 0.34-0.39
+# - independent < 0.30: cross-domain pairs score 0.02-0.04
 
 # Month name -> month number mapping (lowercase keys)
 _MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_name) if m}
@@ -58,8 +69,9 @@ _IMPLICATION_RULES = [
 
 # Date extraction pattern covering all 4 Polymarket formats:
 #   "by Month Day, Year" | "by Month Day" | "in Year" | year-only
+# Uses \b word boundary to prevent matching "in" suffix of words like "Bitcoin"
 _DATE_PATTERN = re.compile(
-    r'(?:by|in|before)\s+'
+    r'\b(?:by|in|before)\s+'
     r'(?:'
     r'(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})?'  # Month Day[, Year]
     r'|'
@@ -251,3 +263,78 @@ def _event_bonus(event_id_a: str | None, event_id_b: str | None) -> float:
     if event_id_a is not None and event_id_b is not None and event_id_a == event_id_b:
         return 1.0
     return 0.0
+
+
+# ---------------------------------------------------------------------------
+# DEP-07 / DEP-08: Weighted scorer and classifier (public API)
+# ---------------------------------------------------------------------------
+
+def classify_pair(
+    question_a: str,
+    question_b: str,
+    event_id_a: str | None = None,
+    event_id_b: str | None = None,
+    weights: dict[str, float] | None = None,
+    thresholds: dict[str, float] | None = None,
+) -> DependencyResult:
+    """Classify a pair of market questions as subset, related, or independent.
+
+    Combines five weighted signals into a composite score and applies
+    two-threshold classification (D-13, D-15, D-17).
+
+    This is the single public function of the dependency detection module.
+    Phase 4 imports this to validate mutual exclusivity of cross-market groups.
+
+    Args:
+        question_a: First market question string.
+        question_b: Second market question string.
+        event_id_a: Optional Gamma API event ID for first market.
+        event_id_b: Optional Gamma API event ID for second market.
+        weights: Optional signal weight overrides (default: DEFAULT_WEIGHTS).
+        thresholds: Optional classification threshold overrides (default: DEFAULT_THRESHOLDS).
+
+    Returns:
+        DependencyResult with label, composite score, and individual signal scores.
+    """
+    if weights is None:
+        weights = DEFAULT_WEIGHTS
+    if thresholds is None:
+        thresholds = DEFAULT_THRESHOLDS
+
+    # DEP-01: Preprocess for Jaccard (only Jaccard uses preprocessed tokens)
+    tokens_a = _preprocess(question_a)
+    tokens_b = _preprocess(question_b)
+
+    # DEP-02 through DEP-06: Compute all 5 signals
+    jaccard = _jaccard_similarity(tokens_a, tokens_b)
+    implication = _keyword_implication(question_a, question_b)  # original strings (Pitfall 3)
+    numeric = _numeric_relation(question_a, question_b)         # original strings
+    temporal = _time_relation(question_a, question_b)           # original strings
+    event_bonus_val = _event_bonus(event_id_a, event_id_b)
+
+    # DEP-07: Weighted linear combination (D-13)
+    score = (
+        weights["jaccard"] * jaccard
+        + weights["implication"] * implication
+        + weights["numeric"] * numeric
+        + weights["temporal"] * temporal
+        + weights["event_bonus"] * event_bonus_val
+    )
+
+    # DEP-08: Three-way classification (D-15)
+    if score >= thresholds["subset"]:
+        label = "subset"
+    elif score >= thresholds["related"]:
+        label = "related"
+    else:
+        label = "independent"
+
+    return DependencyResult(
+        label=label,
+        score=score,
+        jaccard=jaccard,
+        implication=implication,
+        numeric=numeric,
+        temporal=temporal,
+        event_bonus=event_bonus_val,
+    )
