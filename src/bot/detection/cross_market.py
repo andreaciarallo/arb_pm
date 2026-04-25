@@ -17,6 +17,8 @@ with overlapping question text.
 Gamma API is called ONCE at startup via load_event_groups(). The detection loop
 (detect_cross_market_opportunities) is hot-path and never makes network calls.
 """
+import itertools
+
 import httpx
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -35,6 +37,7 @@ from bot.detection.filters import (
     has_dead_leg,
     is_total_yes_reject,
 )
+from bot.detection.dependency import classify_pair
 from bot.detection.opportunity import ArbitrageOpportunity
 from bot.scanner.price_cache import PriceCache
 
@@ -138,6 +141,19 @@ def detect_cross_market_opportunities(
     opportunities: list[ArbitrageOpportunity] = []
     diag = FilterDiagnostics()
 
+    # Build dependency weight/threshold dicts from BotConfig (D-12)
+    dep_weights = {
+        "jaccard": config.dep_weight_jaccard,
+        "implication": config.dep_weight_implication,
+        "numeric": config.dep_weight_numeric,
+        "temporal": config.dep_weight_temporal,
+        "event_bonus": config.dep_weight_event_bonus,
+    }
+    dep_thresholds = {
+        "subset": config.dep_threshold_subset,
+        "related": config.dep_threshold_related,
+    }
+
     for group in groups:
         # Collect YES ask prices and depths for all markets in group
         yes_asks: list[float] = []
@@ -197,6 +213,48 @@ def detect_cross_market_opportunities(
                 f"DETECT-04 reject: total_yes floor | total_yes={total_yes:.4f}"
             )
             continue
+
+        # DEP-09/10/11: Dependency gate — pair generation + classify + audit/reject
+        event_id = _event_groups.get(group[0].get("condition_id", ""))
+        group_flagged = False
+        for m_a, m_b in itertools.combinations(group, 2):
+            result = classify_pair(
+                m_a.get("question", ""),
+                m_b.get("question", ""),
+                event_id_a=event_id,
+                event_id_b=event_id,
+                weights=dep_weights,
+                thresholds=dep_thresholds,
+            )
+            if result.label != "independent":
+                if config.dependency_audit_mode:
+                    logger.info(
+                        f'DEP-AUDIT: {result.label} | score={result.score:.3f} | '
+                        f'jaccard={result.jaccard:.2f} impl={result.implication:.2f} '
+                        f'num={result.numeric:.2f} temp={result.temporal:.2f} '
+                        f'evt={result.event_bonus:.2f} | '
+                        f'q1="{m_a.get("question", "")[:50]}" '
+                        f'q2="{m_b.get("question", "")[:50]}"'
+                    )
+                else:
+                    logger.debug(
+                        f'DEP-REJECT: {result.label} | score={result.score:.3f} | '
+                        f'jaccard={result.jaccard:.2f} impl={result.implication:.2f} '
+                        f'num={result.numeric:.2f} temp={result.temporal:.2f} '
+                        f'evt={result.event_bonus:.2f} | '
+                        f'q1="{m_a.get("question", "")[:50]}" '
+                        f'q2="{m_b.get("question", "")[:50]}"'
+                    )
+                group_flagged = True
+                break  # D-07: one non-independent pair is enough
+
+        if group_flagged:
+            if config.dependency_audit_mode:
+                diag.dep_audit_flags += 1
+                # Audit mode: DON'T continue — let group proceed through remaining gates
+            else:
+                diag.dep_rejects += 1
+                continue  # Rejection mode: skip this group entirely
 
         # Depth gate: weakest link in the group
         min_depth = min(depths)

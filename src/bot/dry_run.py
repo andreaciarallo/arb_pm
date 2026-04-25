@@ -122,6 +122,7 @@ async def run(
                 f"Cycle {cycle + 1} | "
                 f"{len(yes_no_opps)} YES/NO + {len(cross_opps)} cross-market opps | "
                 f"{refreshed} HTTP polls | "
+                f"dep_flags={cm_diag.dep_audit_flags} dep_rejects={cm_diag.dep_rejects} | "
                 f"dedup_suppressed={yn_diag.dedup_suppressed + cm_diag.dedup_suppressed} | "
                 f"cycle={cycle_duration:.2f}s | "
                 f"total_logged={total_logged}"
