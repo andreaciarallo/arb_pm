@@ -138,11 +138,14 @@ def _jaccard_similarity(tokens_a: frozenset[str], tokens_b: frozenset[str]) -> f
 def _keyword_implication(question_a: str, question_b: str) -> float:
     """Pattern matching for subset relationships on original question strings."""
     for child_pat, parent_pat in _IMPLICATION_RULES:
-        # Check a->b direction: a is child (specific), b is parent (general)
-        if child_pat.search(question_a) and parent_pat.search(question_b):
+        a_child = bool(child_pat.search(question_a))
+        b_child = bool(child_pat.search(question_b))
+        a_parent = bool(parent_pat.search(question_a))
+        b_parent = bool(parent_pat.search(question_b))
+        # One must be specific (child) and the other general (parent-only)
+        if a_child and b_parent and not b_child:
             return 1.0
-        # Check b->a direction: b is child, a is parent
-        if child_pat.search(question_b) and parent_pat.search(question_a):
+        if b_child and a_parent and not a_child:
             return 1.0
     return 0.0
 
@@ -298,8 +301,12 @@ def classify_pair(
     """
     if weights is None:
         weights = DEFAULT_WEIGHTS
+    else:
+        weights = {**DEFAULT_WEIGHTS, **weights}
     if thresholds is None:
         thresholds = DEFAULT_THRESHOLDS
+    else:
+        thresholds = {**DEFAULT_THRESHOLDS, **thresholds}
 
     # DEP-01: Preprocess for Jaccard (only Jaccard uses preprocessed tokens)
     tokens_a = _preprocess(question_a)

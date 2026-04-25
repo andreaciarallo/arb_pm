@@ -86,10 +86,12 @@ def test_implication_no_relationship():
     assert score == 0.0
 
 
-def test_implication_reach_higher_implies_lower():
+def test_implication_reach_both_specific_no_implication():
+    """WR-01 update: Both questions match child pattern (reaches $X), so neither
+    is parent-only. Implication must return 0.0. Numeric signal handles this case."""
     from bot.detection.dependency import _keyword_implication
     score = _keyword_implication("Bitcoin reaches $150k?", "Bitcoin reaches $100k?")
-    assert score > 0.0
+    assert score == 0.0
 
 
 # ---------------------------------------------------------------------------
