@@ -18,6 +18,7 @@ from loguru import logger
 
 from bot.config import BotConfig
 from bot.detection.cross_market import detect_cross_market_opportunities, load_event_groups
+from bot.detection.filters import DedupTracker
 from bot.detection.yes_no_arb import detect_yes_no_opportunities
 from bot.scanner.http_poller import poll_stale_markets
 from bot.scanner.market_filter import fetch_liquid_markets
@@ -69,6 +70,10 @@ async def run(
     except Exception as exc:  # pragma: no cover
         logger.warning(f"load_event_groups startup call failed: {exc}")
 
+    # Initialize dedup tracker for quality filter (DETECT-05, D-02)
+    # Persists across scan cycles; resets on bot restart.
+    dedup = DedupTracker(window_seconds=config.dedup_window_seconds)
+
     # Start WebSocket client as background task
     # Cap at 2000 token IDs — large subscription messages are silently dropped
     # by the Polymarket WebSocket server. HTTP polling covers the rest.
@@ -102,9 +107,9 @@ async def run(
             )]
 
             # Detection
-            yes_no_opps, _yn_diag = detect_yes_no_opportunities(priced_markets, cache, config)
+            yes_no_opps, yn_diag = detect_yes_no_opportunities(priced_markets, cache, config, dedup)
             # Cap cross-market scan at 100 priced markets to prevent O(n²) blowup
-            cross_opps, _cm_diag = detect_cross_market_opportunities(priced_markets[:100], cache, config)
+            cross_opps, cm_diag = detect_cross_market_opportunities(priced_markets[:100], cache, config, dedup)
             all_opps = yes_no_opps + cross_opps
 
             # Enqueue to SQLite writer (non-blocking)
@@ -117,6 +122,7 @@ async def run(
                 f"Cycle {cycle + 1} | "
                 f"{len(yes_no_opps)} YES/NO + {len(cross_opps)} cross-market opps | "
                 f"{refreshed} HTTP polls | "
+                f"dedup_suppressed={yn_diag.dedup_suppressed + cm_diag.dedup_suppressed} | "
                 f"cycle={cycle_duration:.2f}s | "
                 f"total_logged={total_logged}"
             )
