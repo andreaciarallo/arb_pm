@@ -127,7 +127,11 @@ def detect_yes_no_opportunities(
 
         # Compute spreads
         gross_spread = 1.0 - yes_ask - no_ask
-        estimated_fees = (yes_ask + no_ask) * taker_fee
+        # Entry fees: taker fee on buying YES + NO tokens
+        entry_fees = (yes_ask + no_ask) * taker_fee
+        # Exit fee: winner resolves at $1.00, taxed at taker rate
+        exit_fee = 1.0 * taker_fee
+        estimated_fees = entry_fees + exit_fee
         net_spread = gross_spread - estimated_fees
 
         # Gate 3: Profit threshold
