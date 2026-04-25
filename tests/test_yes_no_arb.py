@@ -58,7 +58,7 @@ def test_clear_arbitrage_detected():
     cache = _make_cache("y", "n", yes_ask=0.40, no_ask=0.40)
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
 
     assert len(opps) == 1
     opp = opps[0]
@@ -77,7 +77,7 @@ def test_marginal_below_threshold_not_returned():
     cache = _make_cache("y", "n", yes_ask=0.485, no_ask=0.495)
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
     assert len(opps) == 0
 
 
@@ -89,7 +89,7 @@ def test_resolved_market_skipped():
     cache = _make_cache("y", "n", yes_ask=1.0, no_ask=0.0)
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
     assert len(opps) == 0
 
 
@@ -103,7 +103,7 @@ def test_insufficient_depth_skipped():
                         yes_depth=20.0, no_depth=20.0)  # $20 < $50 min
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
     assert len(opps) == 0
 
 
@@ -116,7 +116,7 @@ def test_missing_price_in_cache_skipped():
     cache = PriceCache()  # empty cache
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
     assert len(opps) == 0
 
 
@@ -132,7 +132,7 @@ def test_geopolitics_lower_threshold():
     cache = _make_cache("y", "n", yes_ask=0.492, no_ask=0.492)
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
 
     assert len(opps) == 1
     assert opps[0].category == "geopolitics"
@@ -147,7 +147,7 @@ def test_token_ids_populated():
     cache = _make_cache("yes_token_abc", "no_token_xyz", yes_ask=0.40, no_ask=0.40)
     config = _make_config()
 
-    opps = detect_yes_no_opportunities([market], cache, config)
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
 
     assert len(opps) == 1
     opp = opps[0]
@@ -159,3 +159,52 @@ def test_token_ids_populated():
     )
     assert opp.yes_token_id != "", "yes_token_id must not be empty"
     assert opp.no_token_id != "", "no_token_id must not be empty"
+
+
+def test_ask_floor_rejects_dead_market():
+    """DETECT-01: yes_ask=0.02 (<= 0.03 floor) -> rejected, diag counter incremented."""
+    from bot.detection.yes_no_arb import detect_yes_no_opportunities
+
+    market = _make_market(tags=["politics"])
+    cache = _make_cache("y", "n", yes_ask=0.02, no_ask=0.40)
+    config = _make_config()
+
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
+
+    assert len(opps) == 0
+    assert diag.ask_floor_rejects == 1
+
+
+def test_sum_cap_rejects_near_resolved():
+    """DETECT-02: sum=1.01 (> 0.99 cap) -> rejected, diag counter incremented."""
+    from bot.detection.yes_no_arb import detect_yes_no_opportunities
+
+    market = _make_market(tags=["politics"])
+    cache = _make_cache("y", "n", yes_ask=0.55, no_ask=0.46)
+    config = _make_config()
+
+    opps, diag = detect_yes_no_opportunities([market], cache, config)
+
+    assert len(opps) == 0
+    assert diag.sum_cap_rejects == 1
+
+
+def test_dedup_suppresses_repeat():
+    """DETECT-05: same market detected twice within window -> second is suppressed."""
+    from bot.detection.yes_no_arb import detect_yes_no_opportunities
+    from bot.detection.filters import DedupTracker
+
+    market = _make_market(tags=["politics"])
+    cache = _make_cache("y", "n", yes_ask=0.40, no_ask=0.40)
+    config = _make_config()
+    dedup = DedupTracker(window_seconds=300)
+
+    # First call: opportunity detected, not suppressed
+    opps1, diag1 = detect_yes_no_opportunities([market], cache, config, dedup=dedup)
+    assert len(opps1) == 1
+    assert diag1.dedup_suppressed == 0
+
+    # Second call: same market -> suppressed by dedup
+    opps2, diag2 = detect_yes_no_opportunities([market], cache, config, dedup=dedup)
+    assert len(opps2) == 0
+    assert diag2.dedup_suppressed == 1

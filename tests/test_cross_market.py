@@ -87,7 +87,7 @@ def test_exclusivity_constraint_detected():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
 
         assert len(opps) == 1
         assert opps[0].opportunity_type == "cross_market"
@@ -113,7 +113,7 @@ def test_unrelated_markets_not_grouped():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
         _restore_event_groups(original)
@@ -135,7 +135,7 @@ def test_insufficient_depth_skips_group():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
         _restore_event_groups(original)
@@ -157,7 +157,7 @@ def test_no_arb_when_sum_at_or_above_one():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
         _restore_event_groups(original)
@@ -175,7 +175,7 @@ def test_single_market_group_not_returned():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
         _restore_event_groups(original)
@@ -199,7 +199,7 @@ def test_event_grouping():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
 
         assert len(opps) == 1
         assert opps[0].opportunity_type == "cross_market"
@@ -226,7 +226,7 @@ def test_event_markets_no_id_ignored():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
         _restore_event_groups(original)
@@ -252,11 +252,96 @@ def test_event_different_ids_not_grouped():
     original = _patch_event_groups(markets)
     try:
         config = _make_config()
-        opps = detect_cross_market_opportunities(markets, cache, config)
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
 
         # event_001 has only 1 market -> skipped
         # event_002 has 2 markets: total_yes = 0.55 < 1.0 -> 1 opportunity
         assert len(opps) == 1
         assert opps[0].opportunity_type == "cross_market"
+    finally:
+        _restore_event_groups(original)
+
+
+def test_dead_leg_rejects_group():
+    """DETECT-03: one leg has ask=0.003 (<= 0.005 floor) -> group rejected."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+
+    cache = PriceCache()
+    markets = [
+        _make_market("0x1", "Will Alice win?", "tok_a", event_id="event_dead"),
+        _make_market("0x2", "Will Bob win?", "tok_b", event_id="event_dead"),
+        _make_market("0x3", "Will Carol win?", "tok_c", event_id="event_dead"),
+    ]
+    _populate_cache(cache, "tok_a", 0.30)
+    _populate_cache(cache, "tok_b", 0.25)
+    _populate_cache(cache, "tok_c", 0.003)  # dead leg <= 0.005
+
+    original = _patch_event_groups(markets)
+    try:
+        config = _make_config()
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+        assert len(opps) == 0
+        assert diag.leg_floor_rejects == 1
+    finally:
+        _restore_event_groups(original)
+
+
+def test_total_yes_floor_rejects_degenerate():
+    """DETECT-04: total_yes=0.09 (< 0.10 floor) -> group rejected."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+
+    cache = PriceCache()
+    markets = [
+        _make_market("0x1", "Will Alice win?", "tok_a", event_id="event_degen"),
+        _make_market("0x2", "Will Bob win?", "tok_b", event_id="event_degen"),
+        _make_market("0x3", "Will Carol win?", "tok_c", event_id="event_degen"),
+    ]
+    _populate_cache(cache, "tok_a", 0.03)
+    _populate_cache(cache, "tok_b", 0.03)
+    _populate_cache(cache, "tok_c", 0.03)  # total_yes = 0.09 < 0.10
+
+    original = _patch_event_groups(markets)
+    try:
+        config = _make_config()
+        opps, diag = detect_cross_market_opportunities(markets, cache, config)
+        assert len(opps) == 0
+        assert diag.total_yes_rejects == 1
+    finally:
+        _restore_event_groups(original)
+
+
+def test_cross_dedup_suppresses_repeat():
+    """DETECT-05: same group detected twice within window -> second suppressed."""
+    from bot.scanner.price_cache import PriceCache
+    from bot.detection.cross_market import detect_cross_market_opportunities
+    from bot.detection.filters import DedupTracker
+
+    cache = PriceCache()
+    markets = [
+        _make_market("0x1", "Will Alice win?", "tok_a", event_id="event_dedup"),
+        _make_market("0x2", "Will Bob win?", "tok_b", event_id="event_dedup"),
+        _make_market("0x3", "Will Carol win?", "tok_c", event_id="event_dedup"),
+    ]
+    _populate_cache(cache, "tok_a", 0.30)
+    _populate_cache(cache, "tok_b", 0.25)
+    _populate_cache(cache, "tok_c", 0.20)
+
+    dedup = DedupTracker(window_seconds=300)
+
+    original = _patch_event_groups(markets)
+    try:
+        config = _make_config()
+
+        # First call: opportunity detected
+        opps1, diag1 = detect_cross_market_opportunities(markets, cache, config, dedup=dedup)
+        assert len(opps1) == 1
+        assert diag1.dedup_suppressed == 0
+
+        # Second call: same group -> suppressed
+        opps2, diag2 = detect_cross_market_opportunities(markets, cache, config, dedup=dedup)
+        assert len(opps2) == 0
+        assert diag2.dedup_suppressed == 1
     finally:
         _restore_event_groups(original)
