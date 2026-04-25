@@ -1,7 +1,7 @@
 # Roadmap
 
 **Project:** Polymarket Arbitrage Bot
-**Last Updated:** 2026-04-25
+**Last Updated:** 2026-04-26
 
 ---
 
@@ -44,8 +44,8 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 
 **Milestone Goal:** Eliminate false-positive opportunities, add multi-stage dependency detection for cross-market validation, and simulate execution P&L in dry-run mode to measure real profitability before going live.
 
-- [ ] **Phase 2: Detection Quality Filters** - Price floor gates and deduplication to eliminate 93% false positives
-- [ ] **Phase 3: Dependency Detection Core** - Preprocessing, feature extraction, weighted scoring, and classification module
+- [x] **Phase 2: Detection Quality Filters** - Price floor gates and deduplication to eliminate 93% false positives
+- [x] **Phase 3: Dependency Detection Core** - Preprocessing, feature extraction, weighted scoring, and classification module
 - [ ] **Phase 4: Dependency Integration** - Pair generation, audit mode, and cross-market detector hookup
 - [ ] **Phase 5: Paper Trading Simulation** - VWAP+Kelly simulation in dry-run with paper_trades table and summary queries
 
@@ -80,8 +80,8 @@ Plans:
   5. Module is callable as a pure function with no dependency on scanner state or network I/O
 **Plans:** 2 plans
 Plans:
-- [ ] 03-01-PLAN.md — TDD: Preprocessing + 5 signal extractors + DependencyResult dataclass (DEP-01 through DEP-06)
-- [ ] 03-02-PLAN.md — TDD: Weighted scorer + classifier + validation set (DEP-07, DEP-08)
+- [x] 03-01-PLAN.md — TDD: Preprocessing + 5 signal extractors + DependencyResult dataclass (DEP-01 through DEP-06)
+- [x] 03-02-PLAN.md — TDD: Weighted scorer + classifier + validation set (DEP-07, DEP-08)
 
 ### Phase 4: Dependency Integration
 **Goal**: Dependency detection is wired into the live scanner so cross-market groups are validated for mutual exclusivity before arbitrage detection runs
@@ -91,7 +91,10 @@ Plans:
   1. Pair comparisons are scoped within event groups (not global O(n^2) across all markets)
   2. Audit mode logs which market pairs the dependency filter would reject, without actually rejecting them, so thresholds can be tuned from production data
   3. Cross-market detector consults dependency results and excludes groups containing non-independent (subset/related) market pairs from arbitrage detection
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 04-01-PLAN.md — Prerequisites: BotConfig dependency fields, FilterDiagnostics counters, WR-01/WR-02 bug fixes
+- [ ] 04-02-PLAN.md — Wire dependency gate into cross_market.py with audit/rejection modes and integration tests
 
 ### Phase 5: Paper Trading Simulation
 **Goal**: Dry-run mode simulates full execution (VWAP, Kelly sizing, fees) on every detected opportunity and persists results so profitability can be measured before going live
@@ -122,7 +125,7 @@ Plans:
 | 7. Formal Verification — Phase 04 & 06 | v1.0 | 1/1 | Complete | 2026-04-18 |
 | 8. Fix Circuit Breaker & Alert Accuracy | v1.0 | 2/2 | Complete | 2026-04-18 |
 | 1. Fix Cross-Market False Positives & Wiring | v1.1 | 4/4 | Complete | 2026-04-19 |
-| 2. Detection Quality Filters | v1.2 | 0/3 | Not started | - |
-| 3. Dependency Detection Core | v1.2 | 0/2 | Not started | - |
-| 4. Dependency Integration | v1.2 | 0/TBD | Not started | - |
+| 2. Detection Quality Filters | v1.2 | 3/3 | Complete | 2026-04-25 |
+| 3. Dependency Detection Core | v1.2 | 2/2 | Complete | 2026-04-25 |
+| 4. Dependency Integration | v1.2 | 0/2 | Not started | - |
 | 5. Paper Trading Simulation | v1.2 | 0/TBD | Not started | - |
