@@ -206,10 +206,9 @@ def detect_cross_market_opportunities(
         threshold = get_min_profit_threshold(dominant_category, config)
 
         # Entry fees: taker fee on all N YES token buys.
-        # Exit fee: one additional taker fee on the winning token sell at resolution.
-        # Approximate exit as average cost of one token position.
+        # Exit fee: winning leg resolves at $1.00 per share, taxed at taker rate.
         entry_fees = total_yes * taker_fee
-        exit_fee = (total_yes / len(group)) * taker_fee
+        exit_fee = 1.0 * taker_fee
         estimated_fees = entry_fees + exit_fee
         net_spread = gross_spread - estimated_fees
 
