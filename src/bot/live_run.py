@@ -438,6 +438,12 @@ async def run(
             app_state.cycle_count = cycle
             app_state.last_scan_utc = datetime.utcnow().strftime("%H:%M:%S")
 
+            # Periodic dedup pruning to prevent unbounded memory growth
+            if cycle % 100 == 0:
+                pruned = dedup.prune()
+                if pruned:
+                    logger.debug(f"Dedup pruned {pruned} expired entries")
+
             # Wait for next scan cycle — but wake immediately on SIGTERM
             sleep_time = max(0, config.scan_interval_seconds - cycle_duration)
             if sleep_time > 0:

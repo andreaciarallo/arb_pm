@@ -129,6 +129,12 @@ async def run(
 
             cycle += 1
 
+            # Periodic dedup pruning to prevent unbounded memory growth
+            if cycle % 100 == 0:
+                pruned = dedup.prune()
+                if pruned:
+                    logger.debug(f"Dedup pruned {pruned} expired entries")
+
             # Wait for next scan cycle
             sleep_time = max(0, config.scan_interval_seconds - cycle_duration)
             if sleep_time > 0:
