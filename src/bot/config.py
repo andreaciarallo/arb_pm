@@ -69,6 +69,16 @@ class BotConfig:
     min_cross_total_yes: float = 0.10                # DETECT-04: reject if total YES sum < floor
     dedup_window_seconds: int = 300                  # DETECT-05: suppress duplicate detections within window
 
+    # Phase 4 v1.2: Dependency detection weights and thresholds (D-10, D-11, D-04)
+    dep_weight_jaccard: float = 0.20
+    dep_weight_implication: float = 0.15
+    dep_weight_numeric: float = 0.10
+    dep_weight_temporal: float = 0.30
+    dep_weight_event_bonus: float = 0.25
+    dep_threshold_subset: float = 0.50
+    dep_threshold_related: float = 0.30
+    dependency_audit_mode: bool = True
+
 
 def load_config() -> BotConfig:
     """
