@@ -78,7 +78,10 @@ Plans:
   3. All five feature signals (semantic overlap, keyword implication, numeric relation, time relation, event bonus) contribute to the final weighted score
   4. Score thresholds produce correct classifications on a validation set of known market pairs (e.g., "Will X win by 5%?" is subset of "Will X win?")
   5. Module is callable as a pure function with no dependency on scanner state or network I/O
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 03-01-PLAN.md — TDD: Preprocessing + 5 signal extractors + DependencyResult dataclass (DEP-01 through DEP-06)
+- [ ] 03-02-PLAN.md — TDD: Weighted scorer + classifier + validation set (DEP-07, DEP-08)
 
 ### Phase 4: Dependency Integration
 **Goal**: Dependency detection is wired into the live scanner so cross-market groups are validated for mutual exclusivity before arbitrage detection runs
@@ -120,6 +123,6 @@ Plans:
 | 8. Fix Circuit Breaker & Alert Accuracy | v1.0 | 2/2 | Complete | 2026-04-18 |
 | 1. Fix Cross-Market False Positives & Wiring | v1.1 | 4/4 | Complete | 2026-04-19 |
 | 2. Detection Quality Filters | v1.2 | 0/3 | Not started | - |
-| 3. Dependency Detection Core | v1.2 | 0/TBD | Not started | - |
+| 3. Dependency Detection Core | v1.2 | 0/2 | Not started | - |
 | 4. Dependency Integration | v1.2 | 0/TBD | Not started | - |
 | 5. Paper Trading Simulation | v1.2 | 0/TBD | Not started | - |
