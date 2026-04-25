@@ -58,13 +58,13 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 
 ## Context
 
-**Status:** v1.1 shipped 2026-04-19. Bot is in dry-run mode on HEL1.
+**Status:** v1.2 Phase 2 complete (Detection Quality Filters). Bot is in dry-run mode on HEL1.
 
 **VPS:** Hetzner CPX31, Helsinki FI (204.168.164.145). UFW + fail2ban active after SSH brute-force attack detected 2026-04-19.
 
 **Wallet:** `0x0036F15972166642fCb242F11fa5D1b6AD58Bc70`. Collateral: USDC.e (`0x2791...`). Balance: ~5.88 USDC.e, ~25 MATIC.
 
-**Codebase:** ~4,100 LOC Python (src), ~3,200 LOC tests. 205 commits. 109 unit tests passing.
+**Codebase:** ~4,200 LOC Python (src), ~3,400 LOC tests. 212 commits. 139 unit tests passing.
 
 **Tech stack:** Python 3.12, py-clob-client 0.34.6, httpx, websockets, loguru, FastAPI, SQLite, python-telegram-bot, Docker.
 
@@ -72,7 +72,7 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 - YES/NO arb threshold 1.5% — market is efficient, 0 detected in dry-run; strategy may need tuning
 - WebSocket subscription capped at ~2000 token IDs (server silently drops beyond that)
 - Cross-market execution live path not yet validated in production (dry-run only)
-- Detection logs ~93% false positives from near-resolved markets ($0.001 asks) — no min ask floor
+- ~~Detection logs ~93% false positives from near-resolved markets ($0.001 asks) — no min ask floor~~ Fixed in Phase 2 (filters.py: ask floor, sum cap, dead leg, total_yes, dedup)
 - No paper-trading P&L — dry-run logs detection only, never simulates execution
 - Cross-market dependency detection is flat (event grouping only) — no heuristic/logical filtering
 
@@ -105,4 +105,4 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-04-25 after v1.2 milestone start (detection quality & paper trading)*
+*Last updated: 2026-04-25 after v1.2 Phase 2 complete (detection quality filters)*
