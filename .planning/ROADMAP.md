@@ -93,8 +93,8 @@ Plans:
   3. Cross-market detector consults dependency results and excludes groups containing non-independent (subset/related) market pairs from arbitrage detection
 **Plans:** 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — Prerequisites: BotConfig dependency fields, FilterDiagnostics counters, WR-01/WR-02 bug fixes
-- [ ] 04-02-PLAN.md — Wire dependency gate into cross_market.py with audit/rejection modes and integration tests
+- [x] 04-01-PLAN.md — Prerequisites: BotConfig dependency fields, FilterDiagnostics counters, WR-01/WR-02 bug fixes
+- [x] 04-02-PLAN.md — Wire dependency gate into cross_market.py with audit/rejection modes and integration tests
 
 ### Phase 5: Paper Trading Simulation
 **Goal**: Dry-run mode simulates full execution (VWAP, Kelly sizing, fees) on every detected opportunity and persists results so profitability can be measured before going live
