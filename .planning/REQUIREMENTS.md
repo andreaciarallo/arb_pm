@@ -64,33 +64,33 @@ Requirements for milestone v1.2 — Detection Quality & Paper Trading. Each maps
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DETECT-01 | TBD | Pending |
-| DETECT-02 | TBD | Pending |
-| DETECT-03 | TBD | Pending |
-| DETECT-04 | TBD | Pending |
-| DETECT-05 | TBD | Pending |
-| DEP-01 | TBD | Pending |
-| DEP-02 | TBD | Pending |
-| DEP-03 | TBD | Pending |
-| DEP-04 | TBD | Pending |
-| DEP-05 | TBD | Pending |
-| DEP-06 | TBD | Pending |
-| DEP-07 | TBD | Pending |
-| DEP-08 | TBD | Pending |
-| DEP-09 | TBD | Pending |
-| DEP-10 | TBD | Pending |
-| DEP-11 | TBD | Pending |
-| PAPER-01 | TBD | Pending |
-| PAPER-02 | TBD | Pending |
-| PAPER-03 | TBD | Pending |
-| PAPER-04 | TBD | Pending |
-| PAPER-05 | TBD | Pending |
+| DETECT-01 | Phase 2 | Pending |
+| DETECT-02 | Phase 2 | Pending |
+| DETECT-03 | Phase 2 | Pending |
+| DETECT-04 | Phase 2 | Pending |
+| DETECT-05 | Phase 2 | Pending |
+| DEP-01 | Phase 3 | Pending |
+| DEP-02 | Phase 3 | Pending |
+| DEP-03 | Phase 3 | Pending |
+| DEP-04 | Phase 3 | Pending |
+| DEP-05 | Phase 3 | Pending |
+| DEP-06 | Phase 3 | Pending |
+| DEP-07 | Phase 3 | Pending |
+| DEP-08 | Phase 3 | Pending |
+| DEP-09 | Phase 4 | Pending |
+| DEP-10 | Phase 4 | Pending |
+| DEP-11 | Phase 4 | Pending |
+| PAPER-01 | Phase 5 | Pending |
+| PAPER-02 | Phase 5 | Pending |
+| PAPER-03 | Phase 5 | Pending |
+| PAPER-04 | Phase 5 | Pending |
+| PAPER-05 | Phase 5 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-25*
-*Last updated: 2026-04-25 after initial definition*
+*Last updated: 2026-04-25 after roadmap creation*

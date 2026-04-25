@@ -1,7 +1,7 @@
 # Roadmap
 
 **Project:** Polymarket Arbitrage Bot
-**Last Updated:** 2026-04-19
+**Last Updated:** 2026-04-25
 
 ---
 
@@ -9,6 +9,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-8 (shipped 2026-04-18)
 - ✅ **v1.1 Cross-Market Fixes** — Phase 1 (shipped 2026-04-19)
+- 🚧 **v1.2 Detection Quality & Paper Trading** — Phases 2-5 (in progress)
 
 ---
 
@@ -39,9 +40,69 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 
 </details>
 
+### 🚧 v1.2 Detection Quality & Paper Trading (In Progress)
+
+**Milestone Goal:** Eliminate false-positive opportunities, add multi-stage dependency detection for cross-market validation, and simulate execution P&L in dry-run mode to measure real profitability before going live.
+
+- [ ] **Phase 2: Detection Quality Filters** - Price floor gates and deduplication to eliminate 93% false positives
+- [ ] **Phase 3: Dependency Detection Core** - Preprocessing, feature extraction, weighted scoring, and classification module
+- [ ] **Phase 4: Dependency Integration** - Pair generation, audit mode, and cross-market detector hookup
+- [ ] **Phase 5: Paper Trading Simulation** - VWAP+Kelly simulation in dry-run with paper_trades table and summary queries
+
+---
+
+## Phase Details
+
+### Phase 2: Detection Quality Filters
+**Goal**: Bot produces only actionable arbitrage opportunities by filtering out dead markets, near-resolved markets, and duplicate detections
+**Depends on**: Nothing (first phase in v1.2; builds on existing v1.1 detectors)
+**Requirements**: DETECT-01, DETECT-02, DETECT-03, DETECT-04, DETECT-05
+**Success Criteria** (what must be TRUE):
+  1. Bot never logs a YES/NO opportunity where either ask is at or below $0.03
+  2. Bot never logs a YES/NO opportunity where the ask sum exceeds $0.99
+  3. Bot never logs a cross-market group containing a leg with ask at or below $0.005 or a group with total_yes below $0.10
+  4. Bot logs each unique opportunity at most once per configurable time window (no repeated entries for the same arb within the window)
+**Plans**: TBD
+
+### Phase 3: Dependency Detection Core
+**Goal**: A standalone dependency detection module that can score any pair of market questions for subset/related/independent relationships using five weighted signals
+**Depends on**: Phase 2 (clean detection output feeds into dependency analysis)
+**Requirements**: DEP-01, DEP-02, DEP-03, DEP-04, DEP-05, DEP-06, DEP-07, DEP-08
+**Success Criteria** (what must be TRUE):
+  1. Given two market question strings, the module returns a classification of subset, related, or independent
+  2. Preprocessing normalizes questions to lowercase tokens with stopwords stripped before any signal extraction
+  3. All five feature signals (semantic overlap, keyword implication, numeric relation, time relation, event bonus) contribute to the final weighted score
+  4. Score thresholds produce correct classifications on a validation set of known market pairs (e.g., "Will X win by 5%?" is subset of "Will X win?")
+  5. Module is callable as a pure function with no dependency on scanner state or network I/O
+**Plans**: TBD
+
+### Phase 4: Dependency Integration
+**Goal**: Dependency detection is wired into the live scanner so cross-market groups are validated for mutual exclusivity before arbitrage detection runs
+**Depends on**: Phase 3 (dependency module must exist before integration)
+**Requirements**: DEP-09, DEP-10, DEP-11
+**Success Criteria** (what must be TRUE):
+  1. Pair comparisons are scoped within event groups (not global O(n^2) across all markets)
+  2. Audit mode logs which market pairs the dependency filter would reject, without actually rejecting them, so thresholds can be tuned from production data
+  3. Cross-market detector consults dependency results and excludes groups containing non-independent (subset/related) market pairs from arbitrage detection
+**Plans**: TBD
+
+### Phase 5: Paper Trading Simulation
+**Goal**: Dry-run mode simulates full execution (VWAP, Kelly sizing, fees) on every detected opportunity and persists results so profitability can be measured before going live
+**Depends on**: Phase 4 (paper trading must consume validated, dependency-filtered opportunities)
+**Requirements**: PAPER-01, PAPER-02, PAPER-03, PAPER-04, PAPER-05
+**Success Criteria** (what must be TRUE):
+  1. Every detected opportunity in dry-run triggers a simulated VWAP + Kelly sizing calculation using cached prices
+  2. Simulated trades are stored in a dedicated paper_trades SQLite table, completely isolated from the live trades table
+  3. Each paper-trade record includes simulated size, VWAP price, Kelly allocation, estimated fees, and net P&L
+  4. Cross-market paper trades simulate N-leg execution including partial fill and hedge scenarios
+  5. User can query total simulated P&L, win rate, average spread captured, and per-category breakdown from the paper_trades table
+**Plans**: TBD
+
 ---
 
 ## Progress
+
+**Execution Order:** Phases execute in numeric order: 2 -> 3 -> 4 -> 5
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -54,3 +115,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 | 7. Formal Verification — Phase 04 & 06 | v1.0 | 1/1 | Complete | 2026-04-18 |
 | 8. Fix Circuit Breaker & Alert Accuracy | v1.0 | 2/2 | Complete | 2026-04-18 |
 | 1. Fix Cross-Market False Positives & Wiring | v1.1 | 4/4 | Complete | 2026-04-19 |
+| 2. Detection Quality Filters | v1.2 | 0/TBD | Not started | - |
+| 3. Dependency Detection Core | v1.2 | 0/TBD | Not started | - |
+| 4. Dependency Integration | v1.2 | 0/TBD | Not started | - |
+| 5. Paper Trading Simulation | v1.2 | 0/TBD | Not started | - |
