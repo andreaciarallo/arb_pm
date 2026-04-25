@@ -64,9 +64,9 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
   4. Bot logs each unique opportunity at most once per configurable time window (no repeated entries for the same arb within the window)
 **Plans:** 3 plans
 Plans:
-- [ ] 02-01-PLAN.md — Create filters module (TDD): threshold functions, DedupTracker, FilterDiagnostics, BotConfig fields
-- [ ] 02-02-PLAN.md — Wire filters into YES/NO and cross-market detectors, update detector tests
-- [ ] 02-03-PLAN.md — Wire DedupTracker lifecycle into dry_run and live_run, update orchestrator tests
+- [x] 02-01-PLAN.md — Create filters module (TDD): threshold functions, DedupTracker, FilterDiagnostics, BotConfig fields
+- [x] 02-02-PLAN.md — Wire filters into YES/NO and cross-market detectors, update detector tests
+- [x] 02-03-PLAN.md — Wire DedupTracker lifecycle into dry_run and live_run, update orchestrator tests
 
 ### Phase 3: Dependency Detection Core
 **Goal**: A standalone dependency detection module that can score any pair of market questions for subset/related/independent relationships using five weighted signals
