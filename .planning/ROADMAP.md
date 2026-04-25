@@ -62,7 +62,11 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
   2. Bot never logs a YES/NO opportunity where the ask sum exceeds $0.99
   3. Bot never logs a cross-market group containing a leg with ask at or below $0.005 or a group with total_yes below $0.10
   4. Bot logs each unique opportunity at most once per configurable time window (no repeated entries for the same arb within the window)
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 02-01-PLAN.md — Create filters module (TDD): threshold functions, DedupTracker, FilterDiagnostics, BotConfig fields
+- [ ] 02-02-PLAN.md — Wire filters into YES/NO and cross-market detectors, update detector tests
+- [ ] 02-03-PLAN.md — Wire DedupTracker lifecycle into dry_run and live_run, update orchestrator tests
 
 ### Phase 3: Dependency Detection Core
 **Goal**: A standalone dependency detection module that can score any pair of market questions for subset/related/independent relationships using five weighted signals
@@ -115,7 +119,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 | 7. Formal Verification — Phase 04 & 06 | v1.0 | 1/1 | Complete | 2026-04-18 |
 | 8. Fix Circuit Breaker & Alert Accuracy | v1.0 | 2/2 | Complete | 2026-04-18 |
 | 1. Fix Cross-Market False Positives & Wiring | v1.1 | 4/4 | Complete | 2026-04-19 |
-| 2. Detection Quality Filters | v1.2 | 0/TBD | Not started | - |
+| 2. Detection Quality Filters | v1.2 | 0/3 | Not started | - |
 | 3. Dependency Detection Core | v1.2 | 0/TBD | Not started | - |
 | 4. Dependency Integration | v1.2 | 0/TBD | Not started | - |
 | 5. Paper Trading Simulation | v1.2 | 0/TBD | Not started | - |
