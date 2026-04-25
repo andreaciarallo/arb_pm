@@ -1,22 +1,22 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Cross-Market Fixes
-status: complete
-stopped_at: v1.1 milestone archived
-last_updated: "2026-04-19T21:35:00Z"
+milestone: v1.2
+milestone_name: Detection Quality & Paper Trading
+status: active
+stopped_at: null
+last_updated: "2026-04-25T00:00:00Z"
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 **Project:** Polymarket Arbitrage Bot
-**Last Updated:** 2026-03-28
+**Last Updated:** 2026-04-25
 
 ---
 
@@ -25,22 +25,17 @@ progress:
 | Field | Value |
 |-------|-------|
 | **Core Value** | Ultra-low latency detection and execution of cross-market arbitrage opportunities on Polymarket before they disappear |
-| **Current Focus** | Planning next milestone |
-| **Current Phase** | v1.1 complete |
+| **Current Focus** | v1.2 — Detection Quality & Paper Trading |
+| **Current Phase** | Not started (defining requirements) |
 | **Current Plan** | — |
 
 ---
 
 ## Current Position
 
-Phase: v1.1 — COMPLETE (all 4 plans done)
-**Phase:** 01 (cross-market fixes)
-**Plan:** 4 of 4
-**Status:** Milestone archived
-
-**Progress:**
-
-[██████████] 100%
+Phase: Not started (defining requirements)
+**Status:** Defining requirements
+**Last activity:** 2026-04-25 — Milestone v1.2 started
 
 **Active Branch:** None
 

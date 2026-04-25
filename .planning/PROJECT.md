@@ -37,7 +37,15 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 
 ### Active
 
-_(None — v1.0 shipped all requirements. Next milestone to be defined.)_
+#### Current Milestone: v1.2 Detection Quality & Paper Trading
+
+**Goal:** Eliminate false-positive opportunities, add multi-stage dependency detection, and simulate execution P&L in dry-run mode so we can measure real profitability before going live.
+
+**Target features:**
+- Min ask price floor to filter dead/near-resolved markets ($0.001 asks)
+- Multi-stage dependency pipeline (event grouping → keyword heuristics → probability validation)
+- Paper-trading mode: run VWAP + Kelly in dry-run, log simulated trades with hypothetical P&L
+- Paper-trading summary queries for total simulated profit, win rate, average spread
 
 ### Out of Scope
 
@@ -64,6 +72,9 @@ _(None — v1.0 shipped all requirements. Next milestone to be defined.)_
 - YES/NO arb threshold 1.5% — market is efficient, 0 detected in dry-run; strategy may need tuning
 - WebSocket subscription capped at ~2000 token IDs (server silently drops beyond that)
 - Cross-market execution live path not yet validated in production (dry-run only)
+- Detection logs ~93% false positives from near-resolved markets ($0.001 asks) — no min ask floor
+- No paper-trading P&L — dry-run logs detection only, never simulates execution
+- Cross-market dependency detection is flat (event grouping only) — no heuristic/logical filtering
 
 ## Constraints
 
@@ -94,4 +105,4 @@ _(None — v1.0 shipped all requirements. Next milestone to be defined.)_
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-04-19 after v1.1 milestone completion (cross-market detection/execution fixes)*
+*Last updated: 2026-04-25 after v1.2 milestone start (detection quality & paper trading)*
