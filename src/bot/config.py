@@ -62,6 +62,13 @@ class BotConfig:
     circuit_breaker_window_seconds: int = 60       # Error counting window in seconds (D-07)
     circuit_breaker_cooldown_seconds: int = 300    # Base cooldown: 5 minutes (D-07)
 
+    # Phase 2 v1.2: Detection quality filter thresholds (D-04, D-05)
+    min_ask_floor: float = 0.03                      # DETECT-01: reject if either ask <= floor
+    max_ask_sum: float = 0.99                        # DETECT-02: reject if YES+NO ask sum > cap
+    min_cross_leg_ask: float = 0.005                 # DETECT-03: reject if any cross-market leg <= floor
+    min_cross_total_yes: float = 0.10                # DETECT-04: reject if total YES sum < floor
+    dedup_window_seconds: int = 300                  # DETECT-05: suppress duplicate detections within window
+
 
 def load_config() -> BotConfig:
     """
