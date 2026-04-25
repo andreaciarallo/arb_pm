@@ -281,7 +281,13 @@ async def run(
 
             # Kill switch takes absolute priority — execute active close and exit loop
             if risk_gate.is_kill_switch_active():
-                asyncio.create_task(alerter.send_kill_switch(trigger=_kill_trigger_ref[0]))
+                try:
+                    await asyncio.wait_for(
+                        alerter.send_kill_switch(trigger=_kill_trigger_ref[0]),
+                        timeout=5.0,
+                    )
+                except (asyncio.TimeoutError, Exception) as exc:
+                    logger.warning(f"Kill switch alert failed: {exc}")
                 await _execute_kill_switch(client, conn, writer)
                 break
 
