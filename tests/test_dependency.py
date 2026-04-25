@@ -212,3 +212,213 @@ def test_dependency_result_fields():
     assert result.numeric == 0.0
     assert result.temporal == 1.0
     assert result.event_bonus == 1.0
+
+
+# ---------------------------------------------------------------------------
+# DEP-07: Weighted scorer
+# ---------------------------------------------------------------------------
+
+def test_scorer_all_zeros():
+    """Two completely unrelated questions with different events produce score ~0.0."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Will it rain tomorrow?",
+        "Is the moon made of cheese?",
+        event_id_a="evt-rain",
+        event_id_b="evt-moon",
+    )
+    assert result.score == pytest.approx(0.0, abs=0.05)
+
+
+def test_scorer_weights_sum_to_one():
+    """DEFAULT_WEIGHTS values must sum to 1.0 (Pitfall 4)."""
+    from bot.detection.dependency import DEFAULT_WEIGHTS
+    assert sum(DEFAULT_WEIGHTS.values()) == pytest.approx(1.0)
+
+
+def test_scorer_max_score():
+    """Identical questions with same event_id produce score close to 1.0."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Bitcoin reaches $100k in 2025?",
+        "Bitcoin reaches $100k in 2025?",
+        event_id_a="evt-btc",
+        event_id_b="evt-btc",
+    )
+    # Identical text -> jaccard=1.0, event_bonus=1.0; temporal/numeric may be 0.0
+    # since same values -> no containment relationship
+    assert result.score >= 0.40
+
+
+def test_scorer_individual_signals_in_result():
+    """DependencyResult contains correct individual signal values matching
+    what the signal functions would return independently."""
+    from bot.detection.dependency import (
+        classify_pair, _preprocess, _jaccard_similarity,
+        _keyword_implication, _numeric_relation, _time_relation, _event_bonus,
+    )
+    q_a = "Kraken IPO in 2025?"
+    q_b = "Kraken IPO by December 31, 2026?"
+    eid = "evt-kraken"
+
+    result = classify_pair(q_a, q_b, event_id_a=eid, event_id_b=eid)
+
+    tokens_a = _preprocess(q_a)
+    tokens_b = _preprocess(q_b)
+    assert result.jaccard == pytest.approx(_jaccard_similarity(tokens_a, tokens_b))
+    assert result.implication == pytest.approx(_keyword_implication(q_a, q_b))
+    assert result.numeric == pytest.approx(_numeric_relation(q_a, q_b))
+    assert result.temporal == pytest.approx(_time_relation(q_a, q_b))
+    assert result.event_bonus == pytest.approx(_event_bonus(eid, eid))
+
+
+# ---------------------------------------------------------------------------
+# DEP-08: Classifier (three-way classification + validation set)
+# ---------------------------------------------------------------------------
+
+def test_classify_independent_unrelated():
+    """Completely unrelated markets with different event_ids -> independent."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "MicroStrategy sells any Bitcoin in 2025?",
+        "Will Real Madrid win the 2025-26 La Liga?",
+        event_id_a="evt-microstrategy",
+        event_id_b="evt-laliga",
+    )
+    assert result.label == "independent"
+
+
+def test_classify_independent_different_subjects():
+    """Different subjects but same year -> independent."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Macron out in 2025?",
+        "Kraken IPO in 2025?",
+        event_id_a="evt-macron",
+        event_id_b="evt-kraken",
+    )
+    assert result.label == "independent"
+
+
+def test_classify_subset_deadline_variant_year_only():
+    """Deadline variant: year-only vs by-date with same event -> subset."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "MicroStrategy sells any Bitcoin in 2025?",
+        "MicroStrategy sells any Bitcoin by December 31, 2026?",
+        event_id_a="evt-microstrategy",
+        event_id_b="evt-microstrategy",
+    )
+    assert result.label == "subset"
+
+
+def test_classify_subset_deadline_variant_month():
+    """Deadline variant: earlier month vs later month same year -> subset."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Kraken IPO by March 31, 2026?",
+        "Kraken IPO by December 31, 2026?",
+        event_id_a="evt-kraken",
+        event_id_b="evt-kraken",
+    )
+    assert result.label == "subset"
+
+
+def test_classify_subset_deadline_variant_cross_year():
+    """Deadline variant: cross-year deadlines with same event -> subset."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Macron out by October 31, 2025?",
+        "Macron out by June 30, 2026?",
+        event_id_a="evt-macron",
+        event_id_b="evt-macron",
+    )
+    assert result.label == "subset"
+
+
+def test_classify_related_candidate_variant():
+    """Candidate variant: same event, different subject -> related NOT subset (Pitfall 1)."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Will Real Madrid win the 2025-26 La Liga?",
+        "Will Barcelona win the 2025-26 La Liga?",
+        event_id_a="evt-laliga",
+        event_id_b="evt-laliga",
+    )
+    assert result.label == "related"
+
+
+def test_classify_related_party_variant():
+    """Party variant: same event, different party -> related NOT subset."""
+    from bot.detection.dependency import classify_pair
+    result = classify_pair(
+        "Will the Democrats win the Minnesota Senate race in 2026?",
+        "Will the Republicans win the Minnesota Senate race in 2026?",
+        event_id_a="evt-mn-senate",
+        event_id_b="evt-mn-senate",
+    )
+    assert result.label == "related"
+
+
+def test_classify_custom_weights():
+    """Custom weights produce different score than default."""
+    from bot.detection.dependency import classify_pair, DEFAULT_WEIGHTS
+    q_a = "Kraken IPO in 2025?"
+    q_b = "Kraken IPO by December 31, 2026?"
+    eid = "evt-kraken"
+
+    default_result = classify_pair(q_a, q_b, event_id_a=eid, event_id_b=eid)
+
+    custom_weights = {
+        "jaccard": 0.10,
+        "implication": 0.10,
+        "numeric": 0.10,
+        "temporal": 0.60,
+        "event_bonus": 0.10,
+    }
+    custom_result = classify_pair(
+        q_a, q_b, event_id_a=eid, event_id_b=eid, weights=custom_weights,
+    )
+    assert custom_result.score != pytest.approx(default_result.score, abs=0.001)
+
+
+def test_classify_custom_thresholds():
+    """Custom thresholds change classification boundary."""
+    from bot.detection.dependency import classify_pair
+    q_a = "Will Real Madrid win the 2025-26 La Liga?"
+    q_b = "Will Barcelona win the 2025-26 La Liga?"
+    eid = "evt-laliga"
+
+    # Default thresholds -> "related" (per test_classify_related_candidate_variant)
+    default_result = classify_pair(q_a, q_b, event_id_a=eid, event_id_b=eid)
+
+    # Very low subset threshold -> should now be "subset"
+    low_thresholds = {"subset": 0.05, "related": 0.01}
+    low_result = classify_pair(
+        q_a, q_b, event_id_a=eid, event_id_b=eid, thresholds=low_thresholds,
+    )
+    assert low_result.label == "subset"
+    assert default_result.label != low_result.label
+
+
+def test_classify_pair_signature():
+    """classify_pair accepts the full signature per D-17."""
+    from bot.detection.dependency import classify_pair, DependencyResult
+    import inspect
+    sig = inspect.signature(classify_pair)
+    param_names = list(sig.parameters.keys())
+    assert "question_a" in param_names
+    assert "question_b" in param_names
+    assert "event_id_a" in param_names
+    assert "event_id_b" in param_names
+    assert "weights" in param_names
+    assert "thresholds" in param_names
+    # Return type annotation
+    assert sig.return_annotation is DependencyResult
+
+
+def test_classify_result_type():
+    """classify_pair returns a DependencyResult instance."""
+    from bot.detection.dependency import classify_pair, DependencyResult
+    result = classify_pair("Some question?", "Another question?")
+    assert isinstance(result, DependencyResult)
