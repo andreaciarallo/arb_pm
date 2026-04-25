@@ -59,19 +59,28 @@ def load_event_groups(condition_ids: list[str] | None = None) -> None:
     """
     global _event_groups
     try:
-        params: dict = {"active": "true", "limit": 500}
-        resp = httpx.get(_GAMMA_EVENTS_URL, params=params, timeout=10.0)
-        resp.raise_for_status()
+        offset = 0
+        page_size = 500
         count = 0
-        for event in resp.json():
-            event_id = str(event.get("id", ""))
-            if not event_id:
-                continue
-            for market in event.get("markets", []):
-                cid = market.get("conditionId") or market.get("condition_id", "")
-                if cid:
-                    _event_groups[cid] = event_id
-                    count += 1
+        while True:
+            params: dict = {"active": "true", "limit": page_size, "offset": offset}
+            resp = httpx.get(_GAMMA_EVENTS_URL, params=params, timeout=10.0)
+            resp.raise_for_status()
+            events = resp.json()
+            if not events:
+                break
+            for event in events:
+                event_id = str(event.get("id", ""))
+                if not event_id:
+                    continue
+                for market in event.get("markets", []):
+                    cid = market.get("conditionId") or market.get("condition_id", "")
+                    if cid:
+                        _event_groups[cid] = event_id
+                        count += 1
+            offset += page_size
+            if len(events) < page_size:
+                break
         logger.info(
             f"load_event_groups: loaded {len(_event_groups)} condition_id->event_id "
             f"mappings ({count} from gamma API)"
