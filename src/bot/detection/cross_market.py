@@ -215,10 +215,8 @@ def detect_cross_market_opportunities(
         threshold = get_min_profit_threshold(dominant_category, config)
 
         # Entry fees: taker fee on all N YES token buys.
-        # Exit fee: winning leg resolves at $1.00 per share, taxed at taker rate.
-        entry_fees = total_yes * taker_fee
-        exit_fee = 1.0 * taker_fee
-        estimated_fees = entry_fees + exit_fee
+        # No exit fee — Polymarket charges fees at match time only, not on resolution
+        estimated_fees = total_yes * taker_fee
         net_spread = gross_spread - estimated_fees
 
         if net_spread < threshold:

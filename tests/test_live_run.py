@@ -48,6 +48,7 @@ async def test_live_run_exits_on_kill_file():
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.live_run.load_event_groups"), \
              patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
              patch("bot.live_run._daily_summary_task", new_callable=AsyncMock):
             mock_ws.return_value.run = AsyncMock()
@@ -122,6 +123,7 @@ async def test_risk_gate_blocked_skips_execution():
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=([MagicMock()], _EMPTY_DIAG)), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.live_run.load_event_groups"), \
              patch("bot.live_run.execute_opportunity", new_callable=AsyncMock) as mock_exec, \
              patch("bot.live_run.RiskGate") as mock_rg_cls, \
              patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
@@ -180,6 +182,7 @@ async def test_kill_switch_alert_fires_kill_file():
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.live_run.load_event_groups"), \
              patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
              patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
              patch("bot.live_run.TelegramAlerter", return_value=alerter_mock):
@@ -227,6 +230,7 @@ async def test_kill_switch_alert_fires_sigterm():
                  patch("bot.live_run.poll_stale_markets", side_effect=trigger_sigterm_then_return), \
                  patch("bot.live_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
                  patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+                 patch("bot.live_run.load_event_groups"), \
                  patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
                  patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
                  patch("bot.live_run.TelegramAlerter", return_value=alerter_mock):
@@ -266,6 +270,7 @@ async def test_cb_alert_fires_on_trip():
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.live_run.load_event_groups"), \
              patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
              patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
              patch("bot.live_run.TelegramAlerter", return_value=alerter_mock), \
@@ -306,6 +311,7 @@ async def test_cb_alert_no_duplicate():
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.live_run.load_event_groups"), \
              patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
              patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
              patch("bot.live_run.TelegramAlerter", return_value=alerter_mock), \
@@ -352,6 +358,7 @@ async def test_cb_alert_shows_live_count_not_static_threshold():
              patch("bot.live_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.live_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
              patch("bot.live_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.live_run.load_event_groups"), \
              patch("bot.live_run._start_dashboard", new_callable=AsyncMock), \
              patch("bot.live_run._daily_summary_task", new_callable=AsyncMock), \
              patch("bot.live_run.TelegramAlerter", return_value=alerter_mock), \

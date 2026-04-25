@@ -39,7 +39,8 @@ async def test_no_orders_placed():
              patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
              patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.dry_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
-             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)):
+             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.dry_run.load_event_groups"):
 
             mock_ws = MagicMock()
             mock_ws.run = AsyncMock()
@@ -81,6 +82,7 @@ async def test_opportunities_enqueued_to_writer():
          patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
          patch("bot.dry_run.detect_yes_no_opportunities", return_value=([fake_opp], _EMPTY_DIAG)), \
          patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
+         patch("bot.dry_run.load_event_groups"), \
          patch("bot.dry_run.init_db") as mock_init_db, \
          patch("bot.dry_run.AsyncWriter") as mock_writer_cls:
 
@@ -159,7 +161,8 @@ async def test_dedup_suppressed_in_log(caplog):
              patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
              patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
              patch("bot.dry_run.detect_yes_no_opportunities", return_value=([], yn_diag)), \
-             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], cm_diag)):
+             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], cm_diag)), \
+             patch("bot.dry_run.load_event_groups"):
 
             mock_ws = MagicMock()
             mock_ws.run = AsyncMock()
