@@ -297,9 +297,9 @@ async def run(
             )]
 
             # Detection
-            yes_no_opps = detect_yes_no_opportunities(priced_markets, cache, config)
+            yes_no_opps, _yn_diag = detect_yes_no_opportunities(priced_markets, cache, config)
             # Cap cross-market scan at 100 priced markets to prevent O(n²) blowup
-            cross_opps = detect_cross_market_opportunities(priced_markets[:100], cache, config)
+            cross_opps, _cm_diag = detect_cross_market_opportunities(priced_markets[:100], cache, config)
             all_opps = yes_no_opps + cross_opps
 
             was_cb_open = risk_gate.is_circuit_breaker_open()  # snapshot for CB trip detection (D-03)

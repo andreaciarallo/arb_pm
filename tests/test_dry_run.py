@@ -4,7 +4,11 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
+from bot.detection.filters import FilterDiagnostics
+
 pytestmark = pytest.mark.unit
+
+_EMPTY_DIAG = FilterDiagnostics()
 
 
 def _make_config():
@@ -34,8 +38,8 @@ async def test_no_orders_placed():
         with patch("bot.dry_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]) as mock_fetch, \
              patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
              patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
-             patch("bot.dry_run.detect_yes_no_opportunities", return_value=[]), \
-             patch("bot.dry_run.detect_cross_market_opportunities", return_value=[]):
+             patch("bot.dry_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)):
 
             mock_ws = MagicMock()
             mock_ws.run = AsyncMock()
@@ -75,8 +79,8 @@ async def test_opportunities_enqueued_to_writer():
     with patch("bot.dry_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]), \
          patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
          patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
-         patch("bot.dry_run.detect_yes_no_opportunities", return_value=[fake_opp]), \
-         patch("bot.dry_run.detect_cross_market_opportunities", return_value=[]), \
+         patch("bot.dry_run.detect_yes_no_opportunities", return_value=([fake_opp], _EMPTY_DIAG)), \
+         patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
          patch("bot.dry_run.init_db") as mock_init_db, \
          patch("bot.dry_run.AsyncWriter") as mock_writer_cls:
 
@@ -117,8 +121,8 @@ async def test_load_event_groups_called_at_startup():
         with patch("bot.dry_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]), \
              patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
              patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
-             patch("bot.dry_run.detect_yes_no_opportunities", return_value=[]), \
-             patch("bot.dry_run.detect_cross_market_opportunities", return_value=[]), \
+             patch("bot.dry_run.detect_yes_no_opportunities", return_value=([], _EMPTY_DIAG)), \
+             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], _EMPTY_DIAG)), \
              patch("bot.dry_run.load_event_groups") as mock_leg:
 
             mock_ws = MagicMock()
