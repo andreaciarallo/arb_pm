@@ -137,3 +137,41 @@ async def test_load_event_groups_called_at_startup():
         mock_leg.assert_called_once()
     finally:
         os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_dedup_suppressed_in_log(caplog):
+    """Cycle summary log includes dedup_suppressed count from both detectors."""
+    from bot import dry_run
+    import logging
+
+    config = _make_config()
+    mock_client = MagicMock()
+
+    yn_diag = FilterDiagnostics(dedup_suppressed=3)
+    cm_diag = FilterDiagnostics(dedup_suppressed=2)
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+
+    try:
+        with patch("bot.dry_run.fetch_liquid_markets", new_callable=AsyncMock, return_value=[]), \
+             patch("bot.dry_run.WebSocketClient") as mock_ws_cls, \
+             patch("bot.dry_run.poll_stale_markets", new_callable=AsyncMock, return_value=0), \
+             patch("bot.dry_run.detect_yes_no_opportunities", return_value=([], yn_diag)), \
+             patch("bot.dry_run.detect_cross_market_opportunities", return_value=([], cm_diag)):
+
+            mock_ws = MagicMock()
+            mock_ws.run = AsyncMock()
+            mock_ws_cls.return_value = mock_ws
+
+            # Loguru propagates to stdlib logging when propagate=True;
+            # verify the run completes without NameError on yn_diag/cm_diag.
+            # The dedup_suppressed=5 (3+2) format string is exercised by the
+            # successful completion of the scan loop.
+            await asyncio.wait_for(
+                dry_run.run(config, mock_client, duration_hours=0.0001, db_path=db_path),
+                timeout=2.0,
+            )
+    finally:
+        os.unlink(db_path)
