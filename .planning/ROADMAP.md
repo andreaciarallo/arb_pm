@@ -46,7 +46,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 
 - [x] **Phase 2: Detection Quality Filters** - Price floor gates and deduplication to eliminate 93% false positives
 - [x] **Phase 3: Dependency Detection Core** - Preprocessing, feature extraction, weighted scoring, and classification module
-- [ ] **Phase 4: Dependency Integration** - Pair generation, audit mode, and cross-market detector hookup
+- [x] **Phase 4: Dependency Integration** - Pair generation, audit mode, and cross-market detector hookup
 - [ ] **Phase 5: Paper Trading Simulation** - VWAP+Kelly simulation in dry-run with paper_trades table and summary queries
 
 ---
@@ -106,7 +106,11 @@ Plans:
   3. Each paper-trade record includes simulated size, VWAP price, Kelly allocation, estimated fees, and net P&L
   4. Cross-market paper trades simulate N-leg execution including partial fill and hedge scenarios
   5. User can query total simulated P&L, win rate, average spread captured, and per-category breakdown from the paper_trades table
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 05-01-PLAN.md — PaperTrade dataclass, simulate_yes_no() TDD, paper_trades SQLite table and insert function
+- [ ] 05-02-PLAN.md — simulate_cross_market() TDD, PaperTradeWriter, wire paper trading into dry_run.py scan loop
+- [ ] 05-03-PLAN.md — Paper trade summary query module (get_total_pnl, get_win_rate, get_avg_spread, get_category_breakdown)
 
 ---
 
@@ -127,5 +131,5 @@ Plans:
 | 1. Fix Cross-Market False Positives & Wiring | v1.1 | 4/4 | Complete | 2026-04-19 |
 | 2. Detection Quality Filters | v1.2 | 3/3 | Complete | 2026-04-25 |
 | 3. Dependency Detection Core | v1.2 | 2/2 | Complete | 2026-04-25 |
-| 4. Dependency Integration | v1.2 | 0/2 | Not started | - |
-| 5. Paper Trading Simulation | v1.2 | 0/TBD | Not started | - |
+| 4. Dependency Integration | v1.2 | 2/2 | Complete | 2026-04-26 |
+| 5. Paper Trading Simulation | v1.2 | 0/3 | Not started | - |
