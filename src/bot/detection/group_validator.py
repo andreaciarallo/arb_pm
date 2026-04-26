@@ -9,6 +9,7 @@ Runs ONCE at startup (D-02). Detection loop checks membership via get_valid_grou
 """
 import json
 import itertools
+import re
 from collections import defaultdict
 
 from loguru import logger
@@ -67,7 +68,13 @@ def is_subset_pair(question_a: str, question_b: str) -> tuple[bool, str]:
         num_a = _extract_number(question_a)
         num_b = _extract_number(question_b)
         if num_a is not None and num_b is not None and num_a != num_b:
-            return True, "numeric_threshold"
+            # Skip range-bucket markets (e.g., "$50k-$60k" vs "$60k-$70k")
+            # These are mutually exclusive (one-of-N), not subset/implication pairs.
+            _range_pat = re.compile(r'\d+\s*[-\u2013]\s*\d+|between', re.IGNORECASE)
+            if _range_pat.search(question_a) or _range_pat.search(question_b):
+                pass  # not a subset — range buckets are legitimate one-of-N
+            else:
+                return True, "numeric_threshold"
 
     return False, ""
 
