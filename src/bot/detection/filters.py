@@ -87,11 +87,10 @@ class DedupTracker:
 
 @dataclass
 class FilterDiagnostics:
-    """Per-cycle rejection counters for filter pipeline observability (D-07, D-12)."""
+    """Per-cycle rejection counters for filter pipeline observability."""
     ask_floor_rejects: int = 0
     sum_cap_rejects: int = 0
     leg_floor_rejects: int = 0
     total_yes_rejects: int = 0
     dedup_suppressed: int = 0
-    dep_rejects: int = 0       # groups rejected by dependency gate (rejection mode)
-    dep_audit_flags: int = 0   # groups that WOULD be rejected (audit mode)
+    gv_rejects: int = 0       # groups rejected by startup group validator
