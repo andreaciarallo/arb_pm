@@ -1,14 +1,16 @@
 """
-Tests for the paper trade simulator: PaperTrade dataclass and simulate_yes_no().
+Tests for the paper trade simulator: PaperTrade dataclass, simulate_yes_no(),
+and simulate_cross_market().
 
 Covers PAPER-01 (VWAP + Kelly from cached prices) and PAPER-03 (all 20 fields).
+Plan 05-02 adds cross-market simulation tests.
 """
 import time
 from datetime import datetime
 
 from bot.detection.opportunity import ArbitrageOpportunity
 from bot.scanner.price_cache import MarketPrice, PriceCache
-from bot.paper.simulator import PaperTrade, simulate_yes_no
+from bot.paper.simulator import PaperTrade, simulate_yes_no, simulate_cross_market
 
 
 # ---------------------------------------------------------------------------
@@ -289,3 +291,157 @@ def test_simulate_yes_no_fees_use_category(bot_config):
         assert abs(t.estimated_fees_usd - expected_fee_per_leg) < 0.01, (
             f"Expected fee {expected_fee_per_leg:.4f}, got {t.estimated_fees_usd:.4f}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Cross-market helper
+# ---------------------------------------------------------------------------
+
+
+def _make_cross_opp(
+    legs: list[dict] | None = None,
+    net_spread: float = 0.10,
+    depth: float = 100.0,
+    category: str = "politics",
+    market_id: str = "mkt_cross",
+    market_question: str = "Cross-market arb",
+) -> ArbitrageOpportunity:
+    """Build a cross-market ArbitrageOpportunity with configurable legs."""
+    if legs is None:
+        legs = [
+            {"token_id": "t1", "ask": 0.30, "depth": 50.0},
+            {"token_id": "t2", "ask": 0.25, "depth": 50.0},
+            {"token_id": "t3", "ask": 0.35, "depth": 50.0},
+        ]
+    total_yes = sum(leg["ask"] for leg in legs)
+    gross_spread = 1.0 - total_yes
+    estimated_fees = gross_spread - net_spread
+    return ArbitrageOpportunity(
+        market_id=market_id,
+        market_question=market_question,
+        opportunity_type="cross_market",
+        category=category,
+        yes_ask=total_yes,
+        no_ask=0.0,
+        gross_spread=gross_spread,
+        estimated_fees=estimated_fees,
+        net_spread=net_spread,
+        depth=depth,
+        vwap_yes=total_yes,
+        vwap_no=0.0,
+        confidence_score=0.9,
+        detected_at=datetime.utcnow(),
+        yes_token_id=legs[0]["token_id"] if legs else "",
+        no_token_id="",
+        legs=legs,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cross-market tests
+# ---------------------------------------------------------------------------
+
+
+def test_simulate_cross_market_full_fill(bot_config):
+    """3-leg cross-market opp with sufficient depth fills all legs."""
+    opp = _make_cross_opp()
+    cache = _make_cache([
+        {"token_id": "t1", "yes_ask": 0.30, "yes_depth": 50.0},
+        {"token_id": "t2", "yes_ask": 0.25, "yes_depth": 50.0},
+        {"token_id": "t3", "yes_ask": 0.35, "yes_depth": 50.0},
+    ])
+    result = simulate_cross_market(opp, cache, bot_config)
+
+    assert len(result) == 3, f"Expected 3 trades, got {len(result)}"
+    for t in result:
+        assert t.status == "filled"
+        assert t.opportunity_type == "cross_market"
+    legs = [t.leg for t in result]
+    assert legs == ["leg_1", "leg_2", "leg_3"]
+    # All share the same paper_arb_id
+    arb_ids = {t.paper_arb_id for t in result}
+    assert len(arb_ids) == 1, "All trades in one arb should share paper_arb_id"
+
+
+def test_simulate_cross_market_partial_hedge(bot_config):
+    """When one leg has insufficient depth, partial/failed + hedge rows are created."""
+    opp = _make_cross_opp()
+    cache = _make_cache([
+        {"token_id": "t1", "yes_ask": 0.30, "yes_depth": 50.0},
+        {"token_id": "t2", "yes_ask": 0.25, "yes_depth": 50.0},
+        {"token_id": "t3", "yes_ask": 0.35, "yes_depth": 0.5},  # insufficient depth
+    ])
+    result = simulate_cross_market(opp, cache, bot_config)
+
+    assert len(result) > 0
+    # The last non-hedge row should be partial or failed
+    non_hedge = [t for t in result if t.leg != "hedge"]
+    assert non_hedge[-1].status in ("partial", "failed")
+    # Hedge rows exist for previously filled legs
+    hedges = [t for t in result if t.leg == "hedge"]
+    assert len(hedges) > 0
+    for h in hedges:
+        assert h.status == "hedged"
+        assert h.side == "SELL"
+
+
+def test_simulate_cross_market_kelly_skip(bot_config):
+    """When kelly returns 0 (tiny spread/depth), simulate_cross_market returns []."""
+    opp = _make_cross_opp(net_spread=0.001, depth=1.0)
+    cache = _make_cache([
+        {"token_id": "t1", "yes_ask": 0.30, "yes_depth": 1.0},
+        {"token_id": "t2", "yes_ask": 0.25, "yes_depth": 1.0},
+        {"token_id": "t3", "yes_ask": 0.35, "yes_depth": 1.0},
+    ])
+    result = simulate_cross_market(opp, cache, bot_config)
+    assert result == [], f"Expected empty list, got {len(result)} trades"
+
+
+def test_simulate_cross_market_empty_legs(bot_config):
+    """Cross-market opp with legs=[] returns []."""
+    opp = _make_cross_opp(legs=[])
+    cache = _make_cache([])
+    result = simulate_cross_market(opp, cache, bot_config)
+    assert result == []
+
+
+def test_simulate_cross_market_hedge_fees_zero(bot_config):
+    """Hedge rows in partial scenario have estimated_fees_usd = 0.0."""
+    opp = _make_cross_opp()
+    cache = _make_cache([
+        {"token_id": "t1", "yes_ask": 0.30, "yes_depth": 50.0},
+        {"token_id": "t2", "yes_ask": 0.25, "yes_depth": 50.0},
+        {"token_id": "t3", "yes_ask": 0.35, "yes_depth": 0.5},  # insufficient
+    ])
+    result = simulate_cross_market(opp, cache, bot_config)
+    hedges = [t for t in result if t.leg == "hedge"]
+    assert len(hedges) > 0
+    for h in hedges:
+        assert h.estimated_fees_usd == 0.0
+
+
+def test_simulate_cross_market_equal_shares(bot_config):
+    """2-leg cross-market opp produces equal shares per leg."""
+    legs = [
+        {"token_id": "t1", "ask": 0.40, "depth": 100.0},
+        {"token_id": "t2", "ask": 0.60, "depth": 100.0},
+    ]
+    # total_yes=1.0, gross_spread=0.0 → need net_spread > 0 for kelly
+    # Use asks that sum < 1.0 so there's a real spread
+    legs = [
+        {"token_id": "t1", "ask": 0.40, "depth": 100.0},
+        {"token_id": "t2", "ask": 0.40, "depth": 100.0},
+    ]
+    opp = _make_cross_opp(legs=legs, net_spread=0.10, depth=100.0)
+    cache = _make_cache([
+        {"token_id": "t1", "yes_ask": 0.40, "yes_depth": 100.0},
+        {"token_id": "t2", "yes_ask": 0.40, "yes_depth": 100.0},
+    ])
+    result = simulate_cross_market(opp, cache, bot_config)
+    assert len(result) == 2
+    # Equal shares: simulated_size_usd / ask_price should be the same for both legs
+    shares_1 = result[0].simulated_size_usd / result[0].ask_price
+    shares_2 = result[1].simulated_size_usd / result[1].ask_price
+    assert abs(shares_1 - shares_2) < 0.01, (
+        f"Shares should be equal: leg_1={shares_1:.4f} leg_2={shares_2:.4f}"
+    )

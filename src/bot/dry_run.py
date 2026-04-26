@@ -24,7 +24,9 @@ from bot.scanner.http_poller import poll_stale_markets
 from bot.scanner.market_filter import fetch_liquid_markets
 from bot.scanner.price_cache import PriceCache
 from bot.scanner.ws_client import WebSocketClient
-from bot.storage.schema import init_db
+from bot.paper.simulator import simulate_yes_no, simulate_cross_market
+from bot.paper.writer import PaperTradeWriter
+from bot.storage.schema import init_db, init_paper_trades_table
 from bot.storage.writer import AsyncWriter
 
 _DEFAULT_DURATION_HOURS = 24
@@ -58,6 +60,11 @@ async def run(
     writer = AsyncWriter(conn)
     writer.start()
 
+    # Paper trading (Phase 5, D-01: always-on in dry-run mode)
+    init_paper_trades_table(conn)
+    paper_writer = PaperTradeWriter(conn)
+    paper_writer.start()
+
     # Initialize price cache and fetch initial market list
     cache = PriceCache()
     markets = await fetch_liquid_markets(client, config)
@@ -85,6 +92,7 @@ async def run(
     stop_at = datetime.utcnow() + timedelta(hours=duration_hours)
     cycle = 0
     total_logged = 0
+    total_paper_trades = 0
 
     try:
         while datetime.utcnow() < stop_at:
@@ -112,6 +120,22 @@ async def run(
             cross_opps, cm_diag = detect_cross_market_opportunities(priced_markets[:100], cache, config, dedup)
             all_opps = yes_no_opps + cross_opps
 
+            # Paper trade simulation (Phase 5, D-01: inline after detection)
+            cycle_paper_trades = 0
+            cycle_kelly_skips = 0
+            for opp in all_opps:
+                if opp.opportunity_type == "yes_no":
+                    pts = simulate_yes_no(opp, cache, config)
+                else:
+                    pts = simulate_cross_market(opp, cache, config)
+                if pts:
+                    for pt in pts:
+                        paper_writer.enqueue(pt)
+                    cycle_paper_trades += len(pts)
+                else:
+                    cycle_kelly_skips += 1
+            total_paper_trades += cycle_paper_trades
+
             # Enqueue to SQLite writer (non-blocking)
             for opp in all_opps:
                 writer.enqueue(opp)
@@ -124,6 +148,7 @@ async def run(
                 f"{refreshed} HTTP polls | "
                 f"dep_flags={cm_diag.dep_audit_flags} dep_rejects={cm_diag.dep_rejects} | "
                 f"dedup_suppressed={yn_diag.dedup_suppressed + cm_diag.dedup_suppressed} | "
+                f"paper_trades={cycle_paper_trades} kelly_skips={cycle_kelly_skips} | "
                 f"cycle={cycle_duration:.2f}s | "
                 f"total_logged={total_logged}"
             )
@@ -150,9 +175,11 @@ async def run(
         except asyncio.CancelledError:
             pass
 
+        await paper_writer.stop()
         await writer.stop()
         conn.close()
 
         logger.info(
             f"Dry-run complete | {cycle} cycles | {total_logged} total opportunities logged"
+            f" | {total_paper_trades} paper trades simulated"
         )

@@ -167,3 +167,174 @@ def simulate_yes_no(
         ))
 
     return trades
+
+
+def simulate_cross_market(
+    opp: ArbitrageOpportunity,
+    cache: PriceCache,
+    config: BotConfig,
+) -> list[PaperTrade]:
+    """
+    Simulate a cross-market arbitrage paper trade.
+
+    Equal-shares sizing (D-10): target_shares = kelly_usd / total_yes.
+    Each leg gets the same number of shares; payout = target_shares * $1.00
+    regardless of which outcome wins.
+
+    Sequential leg execution with depth-gated fill (D-07). If any leg has
+    insufficient depth, all previously filled legs are hedged at price=0.01.
+
+    Returns list of PaperTrade rows (one per leg + hedge rows on partial),
+    or [] if legs is empty or Kelly returns 0.
+    """
+    arb_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    # Guard: empty legs
+    if not opp.legs:
+        return []
+
+    total_yes = sum(leg["ask"] for leg in opp.legs)
+
+    # Kelly sizing (D-08)
+    target_size = config.total_capital_usd * config.kelly_max_capital_pct
+    kelly_usd = kelly_size(
+        net_spread=opp.net_spread,
+        depth=opp.depth,
+        target_size=target_size,
+        total_capital=config.total_capital_usd,
+        min_order_usd=config.kelly_min_order_usd,
+        max_capital_pct=config.kelly_max_capital_pct,
+    )
+    if kelly_usd == 0.0:
+        return []
+
+    kelly_frac = kelly_usd / config.total_capital_usd
+
+    # Equal-shares sizing (D-10)
+    target_shares = kelly_usd / total_yes if total_yes > 0 else 0.0
+
+    fee_rate = get_taker_fee(opp.category, config)
+
+    trades: list[PaperTrade] = []
+    filled_legs: list[dict] = []  # track for hedge on partial failure
+    all_filled = True
+
+    for i, leg in enumerate(opp.legs):
+        token_id = leg["token_id"]
+        ask_price = leg["ask"]
+        leg_size_usd = ask_price * target_shares
+
+        # VWAP from cached price (D-02)
+        cached = cache.get(token_id)
+        if cached:
+            asks_list = [{"price": cached.yes_ask, "size": cached.yes_depth}]
+            vwap = simulate_vwap(asks_list, leg_size_usd)
+            depth_avail = cached.yes_depth
+        else:
+            vwap = ask_price
+            depth_avail = leg.get("depth", 0.0)
+
+        # Depth-gated fill (D-07)
+        filled_usd = min(leg_size_usd, depth_avail)
+        fill_ratio = filled_usd / leg_size_usd if leg_size_usd > 0 else 0.0
+
+        leg_fees = fee_rate * filled_usd
+
+        if fill_ratio < 1.0:
+            # This leg is partial or failed
+            all_filled = False
+            status = "partial" if fill_ratio > 0 else "failed"
+            trades.append(PaperTrade(
+                paper_trade_id=str(uuid.uuid4()),
+                paper_arb_id=arb_id,
+                market_id=opp.market_id,
+                market_question=opp.market_question,
+                opportunity_type="cross_market",
+                category=opp.category,
+                leg=f"leg_{i + 1}",
+                side="BUY",
+                token_id=token_id,
+                ask_price=ask_price,
+                simulated_size_usd=leg_size_usd,
+                size_filled_usd=filled_usd,
+                vwap_price=vwap,
+                kelly_fraction=kelly_frac,
+                estimated_fees_usd=leg_fees,
+                net_pnl_usd=0.0,
+                depth_available=depth_avail,
+                fill_ratio=fill_ratio,
+                simulated_at=now,
+                status=status,
+            ))
+
+            # Hedge all previously filled legs
+            for prev in filled_legs:
+                hedge_shares = (
+                    prev["filled_usd"] / prev["vwap"] if prev["vwap"] > 0 else 0.0
+                )
+                hedge_pnl = -(prev["vwap"] - 0.01) * hedge_shares
+                trades.append(PaperTrade(
+                    paper_trade_id=str(uuid.uuid4()),
+                    paper_arb_id=arb_id,
+                    market_id=opp.market_id,
+                    market_question=opp.market_question,
+                    opportunity_type="cross_market",
+                    category=opp.category,
+                    leg="hedge",
+                    side="SELL",
+                    token_id=prev["token_id"],
+                    ask_price=0.01,
+                    simulated_size_usd=prev["filled_usd"],
+                    size_filled_usd=prev["filled_usd"],
+                    vwap_price=0.01,
+                    kelly_fraction=kelly_frac,
+                    estimated_fees_usd=0.0,
+                    net_pnl_usd=hedge_pnl,
+                    depth_available=prev["depth_avail"],
+                    fill_ratio=1.0,
+                    simulated_at=now,
+                    status="hedged",
+                ))
+            break  # stop processing remaining legs after failure
+
+        # Full fill for this leg
+        filled_legs.append({
+            "token_id": token_id,
+            "filled_usd": filled_usd,
+            "vwap": vwap,
+            "depth_avail": depth_avail,
+        })
+        trades.append(PaperTrade(
+            paper_trade_id=str(uuid.uuid4()),
+            paper_arb_id=arb_id,
+            market_id=opp.market_id,
+            market_question=opp.market_question,
+            opportunity_type="cross_market",
+            category=opp.category,
+            leg=f"leg_{i + 1}",
+            side="BUY",
+            token_id=token_id,
+            ask_price=ask_price,
+            simulated_size_usd=leg_size_usd,
+            size_filled_usd=filled_usd,
+            vwap_price=vwap,
+            kelly_fraction=kelly_frac,
+            estimated_fees_usd=leg_fees,
+            net_pnl_usd=0.0,  # placeholder — updated below if all legs fill
+            depth_available=depth_avail,
+            fill_ratio=fill_ratio,
+            simulated_at=now,
+            status="filled",
+        ))
+
+    # If all legs filled, compute and distribute P&L
+    if all_filled and trades:
+        gross_pnl = (1.0 - total_yes) * target_shares
+        total_fees = sum(t.estimated_fees_usd for t in trades)
+        net_pnl = gross_pnl - total_fees
+        per_leg_pnl = net_pnl / len(trades)
+        for t in trades:
+            t.net_pnl_usd = per_leg_pnl
+
+    return trades
