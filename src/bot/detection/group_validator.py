@@ -91,7 +91,10 @@ def passes_completeness_check(
         if isinstance(outcome_prices_raw, str):
             try:
                 prices = json.loads(outcome_prices_raw)
-            except (json.JSONDecodeError, ValueError):
+            except (json.JSONDecodeError, ValueError) as exc:
+                logger.warning(
+                    f"GV: unparseable outcomePrices for market in group: {outcome_prices_raw!r}"
+                )
                 continue
         else:
             prices = outcome_prices_raw
