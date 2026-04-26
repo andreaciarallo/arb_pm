@@ -18,6 +18,7 @@ from loguru import logger
 
 from bot.config import BotConfig
 from bot.detection.cross_market import detect_cross_market_opportunities, load_event_groups
+from bot.detection.group_validator import validate_groups
 from bot.detection.filters import DedupTracker
 from bot.detection.yes_no_arb import detect_yes_no_opportunities
 from bot.scanner.http_poller import poll_stale_markets
@@ -76,6 +77,13 @@ async def run(
         load_event_groups()
     except Exception as exc:  # pragma: no cover
         logger.warning(f"load_event_groups startup call failed: {exc}")
+
+    # Validate loaded groups (GV gate requires this to populate _valid_groups)
+    try:
+        valid = validate_groups()
+        logger.info(f"Group validation: {len(valid)} valid event groups")
+    except Exception as exc:  # pragma: no cover
+        logger.warning(f"validate_groups startup call failed: {exc}")
 
     # Initialize dedup tracker for quality filter (DETECT-05, D-02)
     # Persists across scan cycles; resets on bot restart.
