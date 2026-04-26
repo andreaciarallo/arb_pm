@@ -68,7 +68,7 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 
 ## Context
 
-**Status:** v2.0 milestone started (2026-04-26). Rewriting cross-market arbitrage pipeline from pairwise dependency detection to group-level basket pricing. Bot is in dry-run mode on HEL1 with paper trading active from v1.2.
+**Status:** v2.0 Phase 6 complete (2026-04-26). Group structure validation shipped — NegRisk auto-pass, partition validation (duplicate/subset/completeness), EventInfo enrichment. Rewriting cross-market arbitrage pipeline from pairwise dependency detection to group-level basket pricing. Bot is in dry-run mode on HEL1 with paper trading active from v1.2.
 
 **VPS:** Hetzner CPX31, Helsinki FI (204.168.164.145). UFW + fail2ban active after SSH brute-force attack detected 2026-04-19.
 
@@ -121,4 +121,4 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-04-26 after v2.0 milestone started (Basket Arbitrage Engine)*
+*Last updated: 2026-04-26 after Phase 6 complete (Group Structure Validation — NegRisk auto-pass, partition validation, EventInfo enrichment)*
