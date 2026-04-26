@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Detection Quality & Paper Trading
-status: complete
-stopped_at: Milestone archived
+milestone: v2.0
+milestone_name: Basket Arbitrage Engine
+status: active
+stopped_at: null
 last_updated: "2026-04-26"
 last_activity: 2026-04-26
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -26,7 +26,7 @@ progress:
 | Field | Value |
 |-------|-------|
 | **Core Value** | Ultra-low latency detection and execution of cross-market arbitrage opportunities on Polymarket before they disappear |
-| **Current Focus** | v1.2 complete — no active milestone |
+| **Current Focus** | v2.0 Basket Arbitrage Engine |
 | **Current Phase** | — |
 | **Current Plan** | — |
 
@@ -34,31 +34,12 @@ progress:
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone v1.2 complete. Ready for `/gsd-new-milestone`.
-Last activity: 2026-04-26
+Status: Defining requirements
+Last activity: 2026-04-26 — Milestone v2.0 started
 
-Progress: [██████████] 100%
-
----
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 10 (v1.2)
-- Average duration: —
-- Total execution time: —
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 2. Detection Quality Filters | 3/3 | — | — |
-| 3. Dependency Detection Core | 2/2 | — | — |
-| 4. Dependency Integration | 2/2 | — | — |
-| 5. Paper Trading Simulation | 3/3 | — | — |
+Progress: [░░░░░░░░░░] 0%
 
 ---
 
@@ -70,7 +51,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None — milestone complete.
+None.
 
 ### Blockers/Concerns
 
@@ -81,7 +62,7 @@ None.
 ## Session Continuity
 
 **Last Session:** 2026-04-26
-**Stopped At:** Milestone v1.2 archived
-**Next Step:** `/gsd-new-milestone` to start next milestone
+**Stopped At:** Milestone v2.0 initialized
+**Next Step:** Define requirements and roadmap
 
 ---

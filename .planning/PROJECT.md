@@ -44,7 +44,18 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 
 ### Active
 
-No active milestone. Next milestone not yet defined.
+#### Current Milestone: v2.0 Basket Arbitrage Engine
+
+**Goal:** Replace pairwise dependency detection with group-level structure validation and VWAP-based basket pricing for executable cross-market arbitrage.
+
+**Target features:**
+- Group structure validation (one-of-N partition check replaces pairwise dependency rejection)
+- VWAP-based basket construction (executable cost per leg, not quoted ask sum)
+- Common-size trade sizing (max fillable depth across all legs before trade decision)
+- Liquidity-driven filtering (replace dead-leg price heuristics with depth/spread/stale checks)
+- Profitability gate with fees + slippage buffer
+- Execution improvements (parallel/batched legs, abort-early instead of fire-sale hedge)
+- YES/NO arb removed — cross-market basket arb only
 
 ### Out of Scope
 
@@ -57,7 +68,7 @@ No active milestone. Next milestone not yet defined.
 
 ## Context
 
-**Status:** v1.2 shipped (2026-04-26). All 4 phases complete: detection quality filters, dependency detection core, dependency integration, paper trading simulation. Bot is in dry-run mode on HEL1 with paper trading active.
+**Status:** v2.0 milestone started (2026-04-26). Rewriting cross-market arbitrage pipeline from pairwise dependency detection to group-level basket pricing. Bot is in dry-run mode on HEL1 with paper trading active from v1.2.
 
 **VPS:** Hetzner CPX31, Helsinki FI (204.168.164.145). UFW + fail2ban active after SSH brute-force attack detected 2026-04-19.
 
@@ -110,4 +121,4 @@ No active milestone. Next milestone not yet defined.
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-04-26 after v1.2 milestone complete (Detection Quality & Paper Trading shipped)*
+*Last updated: 2026-04-26 after v2.0 milestone started (Basket Arbitrage Engine)*
