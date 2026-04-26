@@ -79,8 +79,8 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- EventInfo dataclass, enriched load_event_groups(), group_validator.py module with partition validation logic and unit tests
-- [ ] 06-02-PLAN.md -- Wire validator into detection loop, remove inline dependency gate, update existing tests for EventInfo
+- [x] 06-01-PLAN.md -- EventInfo dataclass, enriched load_event_groups(), group_validator.py module with partition validation logic and unit tests
+- [x] 06-02-PLAN.md -- Wire validator into detection loop, remove inline dependency gate, update existing tests for EventInfo
 
 ### Phase 7: Basket VWAP Pricing & Liquidity Filtering
 **Goal**: Bot computes realistic executable cost for each basket using full order book depth, rejects illiquid or unprofitable baskets
