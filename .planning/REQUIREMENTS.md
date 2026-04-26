@@ -72,32 +72,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GV-01 | — | Pending |
-| GV-02 | — | Pending |
-| GV-03 | — | Pending |
-| GV-04 | — | Pending |
-| GV-05 | — | Pending |
-| BP-01 | — | Pending |
-| BP-02 | — | Pending |
-| BP-03 | — | Pending |
-| BP-04 | — | Pending |
-| LP-01 | — | Pending |
-| LP-02 | — | Pending |
-| LP-03 | — | Pending |
-| LP-04 | — | Pending |
-| EX-01 | — | Pending |
-| EX-02 | — | Pending |
-| EX-03 | — | Pending |
-| EX-04 | — | Pending |
-| PI-01 | — | Pending |
-| PI-02 | — | Pending |
-| PI-03 | — | Pending |
+| GV-01 | Phase 6 | Pending |
+| GV-02 | Phase 6 | Pending |
+| GV-03 | Phase 6 | Pending |
+| GV-04 | Phase 6 | Pending |
+| GV-05 | Phase 6 | Pending |
+| BP-01 | Phase 7 | Pending |
+| BP-02 | Phase 7 | Pending |
+| BP-03 | Phase 7 | Pending |
+| BP-04 | Phase 7 | Pending |
+| LP-01 | Phase 7 | Pending |
+| LP-02 | Phase 7 | Pending |
+| LP-03 | Phase 7 | Pending |
+| LP-04 | Phase 7 | Pending |
+| EX-01 | Phase 8 | Pending |
+| EX-02 | Phase 8 | Pending |
+| EX-03 | Phase 8 | Pending |
+| EX-04 | Phase 8 | Pending |
+| PI-01 | Phase 9 | Pending |
+| PI-02 | Phase 9 | Pending |
+| PI-03 | Phase 9 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20
+- Mapped to phases: 20
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-26 after initial definition*
+*Last updated: 2026-04-26 after roadmap creation (traceability populated)*
