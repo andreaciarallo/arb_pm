@@ -39,7 +39,7 @@ def _make_market(condition_id: str, question: str, yes_tok: str,
 
 def _patch_event_groups(markets: list[dict]) -> dict:
     """
-    Build a condition_id -> event_id mapping from markets that have
+    Build a condition_id -> EventInfo mapping from markets that have
     _test_event_id set, and inject it into the module-level _event_groups dict.
     Returns the original _event_groups so callers can restore it.
     """
@@ -49,7 +49,9 @@ def _patch_event_groups(markets: list[dict]) -> dict:
     for m in markets:
         eid = m.get("_test_event_id")
         if eid:
-            cm._event_groups[m["condition_id"]] = eid
+            cm._event_groups[m["condition_id"]] = cm.EventInfo(
+                event_id=eid, neg_risk=False, market_count=0
+            )
     return original
 
 

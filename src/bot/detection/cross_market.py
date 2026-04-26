@@ -18,12 +18,22 @@ Gamma API is called ONCE at startup via load_event_groups(). The detection loop
 (detect_cross_market_opportunities) is hot-path and never makes network calls.
 """
 import itertools
+import json
 
 import httpx
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 
 from loguru import logger
+
+
+@dataclass(frozen=True)
+class EventInfo:
+    """Enriched event metadata for partition validation (D-04)."""
+    event_id: str
+    neg_risk: bool       # True if enableNegRisk=True in Gamma API
+    market_count: int    # Number of markets in this event
 
 from bot.config import BotConfig
 from bot.detection.fee_model import (
@@ -46,9 +56,12 @@ _MIN_GROUP_SIZE = 2         # single-market groups are handled by yes_no_arb
 
 _GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
 
-# Module-level cache: condition_id -> event_id
+# Module-level cache: condition_id -> EventInfo (enriched from Gamma API)
 # Populated once at startup by load_event_groups(); never written during detection.
-_event_groups: dict[str, str] = {}
+_event_groups: dict[str, EventInfo] = {}
+
+# Secondary cache: condition_id -> {question, outcomePrices} from Gamma (for validator)
+_gamma_market_data: dict[str, dict] = {}
 
 
 def load_event_groups(condition_ids: list[str] | None = None) -> None:
@@ -60,11 +73,13 @@ def load_event_groups(condition_ids: list[str] | None = None) -> None:
 
     condition_ids: optional filter; if None, fetches all active events.
     """
-    global _event_groups
+    global _event_groups, _gamma_market_data
     try:
         offset = 0
         page_size = 500
         count = 0
+        neg_risk_events: set[str] = set()
+        all_events: set[str] = set()
         while True:
             params: dict = {"active": "true", "limit": page_size, "offset": offset}
             resp = httpx.get(_GAMMA_EVENTS_URL, params=params, timeout=10.0)
@@ -76,17 +91,32 @@ def load_event_groups(condition_ids: list[str] | None = None) -> None:
                 event_id = str(event.get("id", ""))
                 if not event_id:
                     continue
-                for market in event.get("markets", []):
+                neg_risk = event.get("enableNegRisk", False) is True
+                market_list = event.get("markets", [])
+                market_count = len(market_list)
+                all_events.add(event_id)
+                if neg_risk:
+                    neg_risk_events.add(event_id)
+                for market in market_list:
                     cid = market.get("conditionId") or market.get("condition_id", "")
                     if cid:
-                        _event_groups[cid] = event_id
+                        _event_groups[cid] = EventInfo(
+                            event_id=event_id,
+                            neg_risk=neg_risk,
+                            market_count=market_count,
+                        )
+                        _gamma_market_data[cid] = {
+                            "question": market.get("question", ""),
+                            "outcomePrices": market.get("outcomePrices", "[]"),
+                        }
                         count += 1
             offset += page_size
             if len(events) < page_size:
                 break
         logger.info(
-            f"load_event_groups: loaded {len(_event_groups)} condition_id->event_id "
-            f"mappings ({count} from gamma API)"
+            f"load_event_groups: loaded {len(_event_groups)} condition_id->EventInfo "
+            f"mappings ({count} from gamma API, "
+            f"{len(neg_risk_events)} NegRisk / {len(all_events)} total events)"
         )
     except Exception as exc:
         logger.warning(f"load_event_groups: gamma API fetch failed: {exc}")
@@ -109,8 +139,9 @@ def _group_by_event(markets: list[dict]) -> list[list[dict]]:
     groups: dict[str, list[dict]] = defaultdict(list)
     for market in markets:
         cid = market.get("condition_id", "")
+        info = _event_groups.get(cid)
         event_id = (
-            _event_groups.get(cid)                  # Gamma API event (primary)
+            (info.event_id if info else None)        # Gamma API event (primary)
             or market.get("neg_risk_market_id")      # NegRisk fallback
             or market.get("neg_risk_id")             # alt field name
         )
@@ -215,7 +246,8 @@ def detect_cross_market_opportunities(
             continue
 
         # DEP-09/10/11: Dependency gate — pair generation + classify + audit/reject
-        event_id = _event_groups.get(group[0].get("condition_id", ""))
+        _dep_info = _event_groups.get(group[0].get("condition_id", ""))
+        event_id = _dep_info.event_id if _dep_info else None
         group_flagged = False
         for m_a, m_b in itertools.combinations(group, 2):
             result = classify_pair(
