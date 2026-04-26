@@ -76,11 +76,11 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
   3. Non-NegRisk event groups with subset/implication relations between markets are rejected with diagnostic logging
   4. Non-NegRisk event groups failing completeness heuristic (mid-price sum outside 0.7-1.3) are rejected
   5. Event metadata (market count per event) is cached from Gamma API at startup and available for partition verification
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md -- EventInfo dataclass, enriched load_event_groups(), group_validator.py module with partition validation logic and unit tests
+- [ ] 06-02-PLAN.md -- Wire validator into detection loop, remove inline dependency gate, update existing tests for EventInfo
 
 ### Phase 7: Basket VWAP Pricing & Liquidity Filtering
 **Goal**: Bot computes realistic executable cost for each basket using full order book depth, rejects illiquid or unprofitable baskets
@@ -149,7 +149,7 @@ Phases execute in numeric order: 6 -> 7 -> 8 -> 9
 | 3. Dependency Detection Core | v1.2 | 2/2 | Complete | 2026-04-25 |
 | 4. Dependency Integration | v1.2 | 2/2 | Complete | 2026-04-26 |
 | 5. Paper Trading Simulation | v1.2 | 3/3 | Complete | 2026-04-26 |
-| 6. Group Structure Validation | v2.0 | 0/TBD | Not started | - |
+| 6. Group Structure Validation | v2.0 | 0/2 | Not started | - |
 | 7. Basket VWAP Pricing & Liquidity Filtering | v2.0 | 0/TBD | Not started | - |
 | 8. Batch Execution Engine | v2.0 | 0/TBD | Not started | - |
 | 9. Pipeline Integration & Cleanup | v2.0 | 0/TBD | Not started | - |
