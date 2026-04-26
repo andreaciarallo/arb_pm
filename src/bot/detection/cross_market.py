@@ -170,6 +170,9 @@ def detect_cross_market_opportunities(
     opportunities: list[ArbitrageOpportunity] = []
     diag = FilterDiagnostics()
 
+    # Lazy import to avoid circular dependency (group_validator imports from this module)
+    from bot.detection.group_validator import get_valid_groups
+
     for group in groups:
         # Collect YES ask prices and depths for all markets in group
         yes_asks: list[float] = []
@@ -231,8 +234,6 @@ def detect_cross_market_opportunities(
             continue
 
         # GV gate: skip groups not validated at startup (D-02, D-03)
-        # Lazy import to avoid circular dependency (group_validator imports from this module)
-        from bot.detection.group_validator import get_valid_groups
         first_cid = group[0].get("condition_id", "")
         info = _event_groups.get(first_cid)
         eid = info.event_id if info else None
