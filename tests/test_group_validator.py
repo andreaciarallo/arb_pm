@@ -87,10 +87,12 @@ def test_duplicate_detected():
     """GV-02: Duplicate pair (Jaccard > 0.9) causes group rejection."""
     from bot.detection.group_validator import validate_groups
 
+    # Near-identical questions: after stopword removal, both reduce to
+    # the same token set -> Jaccard ~1.0
     _setup_test_data("event_dup", [
-        {"cid": "c1", "question": "Will Biden win?",
+        {"cid": "c1", "question": "Will Biden win the 2026 presidential election?",
          "outcomePrices": "[0.5, 0.5]"},
-        {"cid": "c2", "question": "Will Joe Biden win?",
+        {"cid": "c2", "question": "Biden will win the presidential election 2026?",
          "outcomePrices": "[0.5, 0.5]"},
     ], neg_risk=False)
     try:
@@ -137,13 +139,19 @@ def test_subset_detected():
 
 
 def test_numeric_subset_detected():
-    """GV-03: Numeric threshold pair (BTC $100k vs $150k) causes group rejection."""
+    """GV-03: Numeric threshold pair causes group rejection."""
     from bot.detection.group_validator import validate_groups
 
+    # Use longer questions so shared tokens dominate -> Jaccard > 0.6
+    # "CryptoPunks floor price above $100k by end of year" vs
+    # "CryptoPunks floor price above $150k by end of year"
+    # Shared tokens: {cryptopunks, floor, price, above, end, year} = 6
+    # Different tokens: {100k} vs {150k} = 2 (one per set)
+    # Jaccard = 6/8 = 0.75 > 0.6
     _setup_test_data("event_num", [
-        {"cid": "c1", "question": "BTC reaches $100k",
+        {"cid": "c1", "question": "CryptoPunks floor price above $100k by end of year",
          "outcomePrices": "[0.5, 0.5]"},
-        {"cid": "c2", "question": "BTC reaches $150k",
+        {"cid": "c2", "question": "CryptoPunks floor price above $150k by end of year",
          "outcomePrices": "[0.5, 0.5]"},
     ], neg_risk=False)
     try:
@@ -222,10 +230,11 @@ def test_gv_reject_log_format(capfd):
     from loguru import logger as _logger
     from bot.detection.group_validator import validate_groups
 
+    # Near-identical questions that trigger duplicate detection (Jaccard > 0.9)
     _setup_test_data("event_log", [
-        {"cid": "c1", "question": "Will Biden win?",
+        {"cid": "c1", "question": "Will Biden win the 2026 presidential election?",
          "outcomePrices": "[0.5, 0.5]"},
-        {"cid": "c2", "question": "Will Joe Biden win?",
+        {"cid": "c2", "question": "Biden will win the presidential election 2026?",
          "outcomePrices": "[0.5, 0.5]"},
     ], neg_risk=False)
 
