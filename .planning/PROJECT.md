@@ -34,18 +34,17 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 - ✓ Send instant alerts via Telegram for trade executions, kill switch, and CB trips — v1.0 (live count accuracy fixed in Phase 8)
 - ✓ Provide local FastAPI dashboard with live metrics (port 8080) — v1.0
 - ✓ Track per-arb analytics: entry/exit prices, hold time, net profit after fees — v1.0
+- ✓ Filter dead/near-resolved markets with ask price floor and sum cap — v1.2 (filters.py: DETECT-01 through DETECT-04)
+- ✓ Deduplicate repeated opportunities within configurable time window — v1.2 (DedupTracker: DETECT-05)
+- ✓ Multi-stage dependency detection pipeline (Jaccard, implication, numeric, temporal, event bonus) — v1.2 (dependency.py: DEP-01 through DEP-08)
+- ✓ Wire dependency classifier into cross-market detector with audit/rejection modes — v1.2 (DEP-09 through DEP-11)
+- ✓ Simulate VWAP + Kelly sizing on detected opportunities in dry-run mode — v1.2 (PAPER-01 through PAPER-03)
+- ✓ Cross-market paper trades with N-leg execution, partial fill, and hedge scenarios — v1.2 (PAPER-04)
+- ✓ Summary queries for total P&L, win rate, avg spread, per-category breakdown — v1.2 (PAPER-05)
 
 ### Active
 
-#### Current Milestone: v1.2 Detection Quality & Paper Trading
-
-**Goal:** Eliminate false-positive opportunities, add multi-stage dependency detection, and simulate execution P&L in dry-run mode so we can measure real profitability before going live.
-
-**Target features:**
-- Min ask price floor to filter dead/near-resolved markets ($0.001 asks)
-- Multi-stage dependency pipeline (event grouping → keyword heuristics → probability validation)
-- Paper-trading mode: run VWAP + Kelly in dry-run, log simulated trades with hypothetical P&L
-- Paper-trading summary queries for total simulated profit, win rate, average spread
+No active milestone. Next milestone not yet defined.
 
 ### Out of Scope
 
@@ -58,7 +57,7 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 
 ## Context
 
-**Status:** v1.2 Phase 5 complete (Paper Trading Simulation). All v1.2 phases done. Bot is in dry-run mode on HEL1 with paper trading active.
+**Status:** v1.2 shipped (2026-04-26). All 4 phases complete: detection quality filters, dependency detection core, dependency integration, paper trading simulation. Bot is in dry-run mode on HEL1 with paper trading active.
 
 **VPS:** Hetzner CPX31, Helsinki FI (204.168.164.145). UFW + fail2ban active after SSH brute-force attack detected 2026-04-19.
 
@@ -99,10 +98,16 @@ Ultra-low latency detection and execution of cross-market arbitrage opportunitie
 | Equal shares not equal dollars (cross-market) | `target_shares = kelly_usd / total_yes` — same payout regardless of winner | ✓ Good — correct arb sizing math |
 | `load_event_groups()` called once at startup | Not in hot detection path — module-level cache dict populated before first cycle | ✓ Good — zero latency impact on scan loop |
 | Partial hedge at price=0.01 | Sell ALL filled legs immediately on any leg failure — aggressive but recovers capital | ✓ Good — prevents stranded positions |
+| Stateless threshold filters (no state across cycles) | Simpler, testable, no false-negative risk from stale state | ✓ Good — 5 filters cover 93% false positive elimination |
+| DedupTracker with monotonic clock | Prevents repeated logging of same opportunity within configurable window | ✓ Good — time.monotonic avoids clock skew issues |
+| 5-signal weighted dependency scorer (stdlib only) | No ML/NLP deps; Jaccard + implication + numeric + temporal + event bonus | ✓ Good — zero Docker image bloat, covers real Polymarket patterns |
+| Audit mode before rejection mode | Log what dependency filters would reject before actually rejecting | ✓ Good — validated scorer accuracy before enabling rejection |
+| Paper trade aggregation by paper_arb_id | Win/loss determined per arb (sum of legs), not individual legs | ✓ Good — matches real trading P&L semantics |
+| PaperTradeWriter as clean copy (not subclass) | Avoid coupling paper trading lifecycle to live AsyncWriter | ✓ Good — independent shutdown, independent schema |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-04-26 after v1.2 Phase 5 complete (paper trading simulation — all v1.2 phases done)*
+*Last updated: 2026-04-26 after v1.2 milestone complete (Detection Quality & Paper Trading shipped)*
