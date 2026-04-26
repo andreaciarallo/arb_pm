@@ -259,3 +259,96 @@ def insert_arb_pair(conn: sqlite3.Connection, pair: dict) -> None:
         pair["hold_seconds"],
     ))
     conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: paper_trades table — simulated trades from paper trading mode (D-04)
+# Completely isolated from trades and opportunities tables.
+# ---------------------------------------------------------------------------
+
+_CREATE_PAPER_TRADES_TABLE = """
+CREATE TABLE IF NOT EXISTS paper_trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paper_trade_id TEXT UNIQUE NOT NULL,
+    paper_arb_id TEXT NOT NULL,
+    market_id TEXT NOT NULL,
+    market_question TEXT NOT NULL,
+    opportunity_type TEXT NOT NULL,
+    category TEXT NOT NULL,
+    leg TEXT NOT NULL,
+    side TEXT NOT NULL,
+    token_id TEXT NOT NULL,
+    ask_price REAL NOT NULL,
+    simulated_size_usd REAL NOT NULL,
+    size_filled_usd REAL NOT NULL,
+    vwap_price REAL NOT NULL,
+    kelly_fraction REAL NOT NULL,
+    estimated_fees_usd REAL NOT NULL,
+    net_pnl_usd REAL NOT NULL,
+    depth_available REAL NOT NULL,
+    fill_ratio REAL NOT NULL,
+    simulated_at TEXT NOT NULL,
+    status TEXT NOT NULL
+)
+"""
+
+_CREATE_PAPER_TRADES_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_paper_trades_arb_id ON paper_trades(paper_arb_id)",
+    "CREATE INDEX IF NOT EXISTS idx_paper_trades_simulated_at ON paper_trades(simulated_at)",
+    "CREATE INDEX IF NOT EXISTS idx_paper_trades_opp_type ON paper_trades(opportunity_type)",
+    "CREATE INDEX IF NOT EXISTS idx_paper_trades_category ON paper_trades(category)",
+    "CREATE INDEX IF NOT EXISTS idx_paper_trades_status ON paper_trades(status)",
+]
+
+_INSERT_PAPER_TRADE = """
+INSERT OR IGNORE INTO paper_trades (
+    paper_trade_id, paper_arb_id, market_id, market_question,
+    opportunity_type, category, leg, side, token_id,
+    ask_price, simulated_size_usd, size_filled_usd, vwap_price,
+    kelly_fraction, estimated_fees_usd, net_pnl_usd,
+    depth_available, fill_ratio, simulated_at, status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+
+def init_paper_trades_table(conn: sqlite3.Connection) -> None:
+    """
+    Create the paper_trades table and indexes if they don't exist.
+    Called from dry_run.py init. Safe on existing database — uses IF NOT EXISTS.
+    """
+    conn.execute(_CREATE_PAPER_TRADES_TABLE)
+    for idx_sql in _CREATE_PAPER_TRADES_INDEXES:
+        conn.execute(idx_sql)
+    conn.commit()
+
+
+def insert_paper_trade(conn: sqlite3.Connection, paper_trade) -> None:
+    """
+    Insert one PaperTrade into the paper_trades table.
+
+    Uses INSERT OR IGNORE to prevent duplicate paper_trade_id constraint errors.
+    Uses parameterized queries (? placeholders) — never string interpolation (T-05-02).
+    """
+    conn.execute(_INSERT_PAPER_TRADE, (
+        paper_trade.paper_trade_id,
+        paper_trade.paper_arb_id,
+        paper_trade.market_id,
+        paper_trade.market_question,
+        paper_trade.opportunity_type,
+        paper_trade.category,
+        paper_trade.leg,
+        paper_trade.side,
+        paper_trade.token_id,
+        paper_trade.ask_price,
+        paper_trade.simulated_size_usd,
+        paper_trade.size_filled_usd,
+        paper_trade.vwap_price,
+        paper_trade.kelly_fraction,
+        paper_trade.estimated_fees_usd,
+        paper_trade.net_pnl_usd,
+        paper_trade.depth_available,
+        paper_trade.fill_ratio,
+        paper_trade.simulated_at,
+        paper_trade.status,
+    ))
+    conn.commit()
