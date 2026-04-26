@@ -4,9 +4,9 @@ import pytest
 pytestmark = pytest.mark.unit
 
 # Field name used by _group_by_event() to look up event membership.
-# PATH B (Gamma API): _event_groups maps condition_id -> event_id at module level.
+# PATH B (Gamma API): _event_groups maps condition_id -> EventInfo at module level.
 # In tests we bypass the Gamma API by injecting the event_id directly into the
-# market dict via the "event_id" helper key, then patching _event_groups.
+# market dict via the "_test_event_id" helper key, then patching _event_groups.
 _EVENT_FIELD = "condition_id"   # used in _group_by_event via _event_groups lookup
 
 
@@ -21,7 +21,8 @@ def _make_config():
 
 
 def _make_market(condition_id: str, question: str, yes_tok: str,
-                 tags: list[str] = None, event_id: str = None) -> dict:
+                 tags: list[str] = None, event_id: str = None,
+                 neg_risk: bool = False) -> dict:
     m = {
         "condition_id": condition_id,
         "question": question,
@@ -34,6 +35,8 @@ def _make_market(condition_id: str, question: str, yes_tok: str,
         # Store the event_id in the market dict; _patch_event_groups() will
         # use it to populate bot.detection.cross_market._event_groups.
         m["_test_event_id"] = event_id
+    if neg_risk:
+        m["_test_neg_risk"] = True
     return m
 
 
@@ -46,11 +49,19 @@ def _patch_event_groups(markets: list[dict]) -> dict:
     import bot.detection.cross_market as cm
     original = dict(cm._event_groups)
     cm._event_groups.clear()
+    # Count markets per event for market_count
+    event_counts: dict[str, int] = {}
+    for m in markets:
+        eid = m.get("_test_event_id")
+        if eid:
+            event_counts[eid] = event_counts.get(eid, 0) + 1
     for m in markets:
         eid = m.get("_test_event_id")
         if eid:
             cm._event_groups[m["condition_id"]] = cm.EventInfo(
-                event_id=eid, neg_risk=False, market_count=0
+                event_id=eid,
+                neg_risk=m.get("_test_neg_risk", False),
+                market_count=event_counts.get(eid, 1),
             )
     return original
 
@@ -59,6 +70,25 @@ def _restore_event_groups(original: dict) -> None:
     import bot.detection.cross_market as cm
     cm._event_groups.clear()
     cm._event_groups.update(original)
+
+
+def _patch_valid_groups(markets: list[dict]) -> set:
+    """
+    Populate group_validator._valid_groups with all event IDs from test markets.
+    Returns original _valid_groups for restoration.
+    """
+    import bot.detection.group_validator as gv
+    original = set(gv._valid_groups)
+    gv._valid_groups.clear()
+    event_ids = {m.get("_test_event_id") for m in markets if m.get("_test_event_id")}
+    gv._valid_groups.update(event_ids)
+    return original
+
+
+def _restore_valid_groups(original: set) -> None:
+    import bot.detection.group_validator as gv
+    gv._valid_groups.clear()
+    gv._valid_groups.update(original)
 
 
 def _populate_cache(cache, token_id: str, ask: float, depth: float = 200.0):
@@ -72,7 +102,7 @@ def _populate_cache(cache, token_id: str, ask: float, depth: float = 200.0):
 
 
 def test_exclusivity_constraint_detected():
-    """3 mutually exclusive markets with sum(YES) < 1.0 → cross_market opportunity."""
+    """3 mutually exclusive markets with sum(YES) < 1.0 -> cross_market opportunity."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
@@ -86,7 +116,8 @@ def test_exclusivity_constraint_detected():
     _populate_cache(cache, "tok_b", 0.25)
     _populate_cache(cache, "tok_c", 0.20)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
@@ -95,11 +126,12 @@ def test_exclusivity_constraint_detected():
         assert opps[0].opportunity_type == "cross_market"
         assert opps[0].gross_spread == pytest.approx(0.25)  # 1.0 - 0.75
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_unrelated_markets_not_grouped():
-    """Markets without an event ID are never grouped — zero opportunities."""
+    """Markets without an event ID are never grouped -- zero opportunities."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
@@ -111,18 +143,20 @@ def test_unrelated_markets_not_grouped():
     _populate_cache(cache, "tok_a", 0.30)
     _populate_cache(cache, "tok_b", 0.30)
 
-    # No event_id on either market → no grouping → 0 opportunities
-    original = _patch_event_groups(markets)
+    # No event_id on either market -> no grouping -> 0 opportunities
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_insufficient_depth_skips_group():
-    """One market in the group has insufficient depth → whole group not returned."""
+    """One market in the group has insufficient depth -> whole group not returned."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
@@ -134,17 +168,19 @@ def test_insufficient_depth_skips_group():
     _populate_cache(cache, "tok_a", 0.30, depth=200.0)
     _populate_cache(cache, "tok_b", 0.25, depth=10.0)  # below $50 threshold
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_no_arb_when_sum_at_or_above_one():
-    """Sum(YES asks) >= 1.0 → no arbitrage."""
+    """Sum(YES asks) >= 1.0 -> no arbitrage."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
@@ -156,13 +192,15 @@ def test_no_arb_when_sum_at_or_above_one():
     _populate_cache(cache, "tok_a", 0.55)  # sum = 1.05 > 1.0
     _populate_cache(cache, "tok_b", 0.50)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_single_market_group_not_returned():
@@ -174,13 +212,15 @@ def test_single_market_group_not_returned():
     markets = [_make_market("0x1", "Will Alice win the election?", "tok_a", event_id="event_election_2026")]
     _populate_cache(cache, "tok_a", 0.30)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_event_grouping():
@@ -198,7 +238,8 @@ def test_event_grouping():
     _populate_cache(cache, "tok_b", 0.25)
     _populate_cache(cache, "tok_c", 0.20)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
@@ -207,11 +248,12 @@ def test_event_grouping():
         assert opps[0].opportunity_type == "cross_market"
         assert opps[0].gross_spread == pytest.approx(0.25, abs=1e-4)  # 1.0 - 0.75
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_event_markets_no_id_ignored():
-    """Markets without an event ID are not grouped — zero opportunities."""
+    """Markets without an event ID are not grouped -- zero opportunities."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
@@ -225,13 +267,15 @@ def test_event_markets_no_id_ignored():
     _populate_cache(cache, "tok_b", 0.25)
     _populate_cache(cache, "tok_c", 0.20)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_event_different_ids_not_grouped():
@@ -251,7 +295,8 @@ def test_event_different_ids_not_grouped():
     _populate_cache(cache, "tok_b", 0.25)
     _populate_cache(cache, "tok_c", 0.30)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
@@ -261,7 +306,8 @@ def test_event_different_ids_not_grouped():
         assert len(opps) == 1
         assert opps[0].opportunity_type == "cross_market"
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_dead_leg_rejects_group():
@@ -279,14 +325,16 @@ def test_dead_leg_rejects_group():
     _populate_cache(cache, "tok_b", 0.25)
     _populate_cache(cache, "tok_c", 0.003)  # dead leg <= 0.005
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
         assert diag.leg_floor_rejects == 1
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_total_yes_floor_rejects_degenerate():
@@ -304,14 +352,16 @@ def test_total_yes_floor_rejects_degenerate():
     _populate_cache(cache, "tok_b", 0.03)
     _populate_cache(cache, "tok_c", 0.03)  # total_yes = 0.09 < 0.10
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
         assert len(opps) == 0
         assert diag.total_yes_rejects == 1
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 def test_cross_dedup_suppresses_repeat():
@@ -332,7 +382,8 @@ def test_cross_dedup_suppresses_repeat():
 
     dedup = DedupTracker(window_seconds=300)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)
     try:
         config = _make_config()
 
@@ -346,187 +397,82 @@ def test_cross_dedup_suppresses_repeat():
         assert len(opps2) == 0
         assert diag2.dedup_suppressed == 1
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
 # ---------------------------------------------------------------------------
-# DEP-09/10/11: Dependency gate integration tests
+# GV gate: group validator integration tests
 # ---------------------------------------------------------------------------
 
-def test_dependency_audit_mode_logs_not_rejects():
-    """DEP-10: Audit mode (default) logs non-independent pairs but does NOT reject."""
+def test_gv_valid_group_passes_through():
+    """Groups in valid_groups pass through the GV gate."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
     cache = PriceCache()
-    # Two deadline-variant questions in same event -> classify_pair returns "subset"
     markets = [
-        _make_market("0x1", "Kraken IPO in 2025?", "tok_a", event_id="event_kraken"),
-        _make_market("0x2", "Kraken IPO by December 31, 2026?", "tok_b", event_id="event_kraken"),
+        _make_market("0x1", "Will Alice win?", "tok_a", event_id="event_valid"),
+        _make_market("0x2", "Will Bob win?", "tok_b", event_id="event_valid"),
+        _make_market("0x3", "Will Carol win?", "tok_c", event_id="event_valid"),
     ]
     _populate_cache(cache, "tok_a", 0.30)
-    _populate_cache(cache, "tok_b", 0.20)
+    _populate_cache(cache, "tok_b", 0.25)
+    _populate_cache(cache, "tok_c", 0.20)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    orig_vg = _patch_valid_groups(markets)  # event_valid is in valid_groups
     try:
-        config = _make_config()  # dependency_audit_mode=True by default
+        config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
 
-        # Audit mode: group is NOT rejected, opportunity still produced
         assert len(opps) == 1
-        assert diag.dep_audit_flags == 1
-        assert diag.dep_rejects == 0
+        assert opps[0].opportunity_type == "cross_market"
+        assert diag.gv_rejects == 0
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
-def test_dependency_rejection_mode_rejects_group():
-    """DEP-11: Rejection mode drops groups with non-independent pairs."""
+def test_gv_invalid_group_rejected():
+    """Groups NOT in valid_groups are rejected with gv_rejects counter."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
-    from bot.config import BotConfig
+    import bot.detection.group_validator as gv
 
     cache = PriceCache()
-    # Same deadline-variant pair as above -> "subset" classification
     markets = [
-        _make_market("0x1", "Kraken IPO in 2025?", "tok_a", event_id="event_kraken"),
-        _make_market("0x2", "Kraken IPO by December 31, 2026?", "tok_b", event_id="event_kraken"),
+        _make_market("0x1", "Will Alice win?", "tok_a", event_id="event_invalid"),
+        _make_market("0x2", "Will Bob win?", "tok_b", event_id="event_invalid"),
+        _make_market("0x3", "Will Carol win?", "tok_c", event_id="event_invalid"),
     ]
     _populate_cache(cache, "tok_a", 0.30)
-    _populate_cache(cache, "tok_b", 0.20)
+    _populate_cache(cache, "tok_b", 0.25)
+    _populate_cache(cache, "tok_c", 0.20)
 
-    original = _patch_event_groups(markets)
+    orig_eg = _patch_event_groups(markets)
+    # Explicitly set valid_groups to NOT include event_invalid
+    orig_vg = set(gv._valid_groups)
+    gv._valid_groups.clear()
+    gv._valid_groups.add("some_other_event")  # different event, not event_invalid
     try:
-        config = BotConfig(
-            poly_api_key="k", poly_api_secret="s", poly_api_passphrase="p",
-            wallet_private_key="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-            polygon_rpc_http="https://polygon.example.com",
-            polygon_rpc_ws="wss://polygon.example.com",
-            dependency_audit_mode=False,  # Rejection mode
-        )
+        config = _make_config()
         opps, diag = detect_cross_market_opportunities(markets, cache, config)
 
-        # Rejection mode: group is rejected
         assert len(opps) == 0
-        assert diag.dep_rejects == 1
-        assert diag.dep_audit_flags == 0
+        assert diag.gv_rejects == 1
     finally:
-        _restore_event_groups(original)
+        _restore_event_groups(orig_eg)
+        _restore_valid_groups(orig_vg)
 
 
-def test_dependency_independent_pairs_pass_through():
-    """DEP-09: Groups where all pairs are independent pass through normally."""
-    from bot.scanner.price_cache import PriceCache
-    from bot.detection.cross_market import detect_cross_market_opportunities
-    from bot.config import BotConfig
-
-    cache = PriceCache()
-    # Use markets without event_id match so event_bonus=0, and unrelated questions
-    # so all signals are 0 -> independent classification
-    markets = [
-        _make_market("0x1", "Will Acme stock soar?", "tok_a", event_id="event_misc"),
-        _make_market("0x2", "Will Mars colony succeed?", "tok_b", event_id="event_misc"),
-    ]
-    _populate_cache(cache, "tok_a", 0.30)
-    _populate_cache(cache, "tok_b", 0.20)
-
-    original = _patch_event_groups(markets)
-    try:
-        # Even in rejection mode, independent pairs pass through
-        config = BotConfig(
-            poly_api_key="k", poly_api_secret="s", poly_api_passphrase="p",
-            wallet_private_key="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-            polygon_rpc_http="https://polygon.example.com",
-            polygon_rpc_ws="wss://polygon.example.com",
-            dependency_audit_mode=False,
-        )
-        opps, diag = detect_cross_market_opportunities(markets, cache, config)
-
-        # Independent pairs: no dep flags, no dep rejects
-        assert len(opps) == 1
-        assert diag.dep_rejects == 0
-        assert diag.dep_audit_flags == 0
-    finally:
-        _restore_event_groups(original)
-
-
-def test_dependency_pairs_scoped_within_group():
-    """DEP-09: Pair comparison is scoped within event groups, not global."""
-    from bot.scanner.price_cache import PriceCache
-    from bot.detection.cross_market import detect_cross_market_opportunities
-    from bot.config import BotConfig
-
-    cache = PriceCache()
-    # Group A: deadline variants (will be flagged as subset -> rejected)
-    # Group B: unrelated questions (independent -> passes through)
-    markets = [
-        _make_market("0xA1", "Kraken IPO in 2025?", "tok_a1", event_id="event_kraken"),
-        _make_market("0xA2", "Kraken IPO by December 31, 2026?", "tok_a2", event_id="event_kraken"),
-        _make_market("0xB1", "Will Acme stock soar?", "tok_b1", event_id="event_misc"),
-        _make_market("0xB2", "Will Mars colony succeed?", "tok_b2", event_id="event_misc"),
-    ]
-    for tok in ["tok_a1", "tok_a2", "tok_b1", "tok_b2"]:
-        _populate_cache(cache, tok, 0.25)
-
-    original = _patch_event_groups(markets)
-    try:
-        config = BotConfig(
-            poly_api_key="k", poly_api_secret="s", poly_api_passphrase="p",
-            wallet_private_key="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-            polygon_rpc_http="https://polygon.example.com",
-            polygon_rpc_ws="wss://polygon.example.com",
-            dependency_audit_mode=False,
-        )
-        opps, diag = detect_cross_market_opportunities(markets, cache, config)
-
-        # Group A (kraken): deadline variants -> subset -> rejected
-        # Group B (misc): unrelated -> independent -> passes through
-        assert diag.dep_rejects >= 1  # group A rejected
-        # Group B produces opportunity (independent, total_yes=0.50 < 1.0)
-        assert len(opps) == 1
-    finally:
-        _restore_event_groups(original)
-
-
-def test_dependency_diagnostics_dep_counters():
-    """D-08: FilterDiagnostics includes dep_rejects and dep_audit_flags, initialized to 0."""
+def test_gv_rejects_counter_in_diagnostics():
+    """FilterDiagnostics gv_rejects starts at 0 and increments on rejection."""
     from bot.scanner.price_cache import PriceCache
     from bot.detection.cross_market import detect_cross_market_opportunities
 
     cache = PriceCache()
-    # No markets -> no groups -> no dependency checks -> counters stay 0
+    # No markets -> no groups -> gv_rejects stays 0
     config = _make_config()
     opps, diag = detect_cross_market_opportunities([], cache, config)
-    assert diag.dep_rejects == 0
-    assert diag.dep_audit_flags == 0
-
-
-def test_dependency_audit_log_format(capfd):
-    """DEP-10/D-05: Audit mode logs with DEP-AUDIT prefix and signal breakdown."""
-    import sys
-    from loguru import logger as _logger
-    from bot.scanner.price_cache import PriceCache
-    from bot.detection.cross_market import detect_cross_market_opportunities
-
-    cache = PriceCache()
-    markets = [
-        _make_market("0x1", "Kraken IPO in 2025?", "tok_a", event_id="event_kraken"),
-        _make_market("0x2", "Kraken IPO by December 31, 2026?", "tok_b", event_id="event_kraken"),
-    ]
-    _populate_cache(cache, "tok_a", 0.30)
-    _populate_cache(cache, "tok_b", 0.20)
-
-    # Add stderr sink to capture loguru output
-    sink_id = _logger.add(sys.stderr, format="{message}", level="INFO")
-    original = _patch_event_groups(markets)
-    try:
-        config = _make_config()  # audit mode ON
-        opps, diag = detect_cross_market_opportunities(markets, cache, config)
-        captured = capfd.readouterr()
-
-        assert "DEP-AUDIT:" in captured.err
-        assert "score=" in captured.err
-        assert "jaccard=" in captured.err
-    finally:
-        _restore_event_groups(original)
-        _logger.remove(sink_id)
+    assert diag.gv_rejects == 0
